@@ -1,0 +1,69 @@
+### 1. Root Cause Analysis (5 Whys)
+
+*   **Why #1: Why did Peloton end up with over $1 billion in unsold inventory by early 2023?**
+    *   *Fact:* Peloton experienced a demand reversal in late 2021 as gyms reopened and outdoor activities resumed, rendering their production schedule—based on peak 2020 pandemic demand—severely misaligned with actual market intake.
+*   **Why #2: Why was production volume misaligned with market reality?**
+    *   *Fact:* Leadership relied on linear extrapolation of the 300% pandemic surge, committing to fixed costs ($800M in factory/acquisition capacity) as if the growth was permanent rather than cyclical.
+*   **Why #3: Why did management treat a temporary surge as a permanent structural shift?**
+    *   *Fact:* The company lacked an agile, scenario-based forecasting model that could stress-test the impact of "return to normalcy" variables (gym reopening rates, vaccination status, consumer discretionary spending shifts).
+*   **Why #4: Why was the forecasting model inadequate?**
+    *   *Fact:* The corporate strategy was tethered to a high-growth "Hardware-as-a-Service" model that prioritized physical market share and rapid scaling of manufacturing capacity over operational flexibility.
+*   **Why #5: Why was the strategy so rigid?**
+    *   *Fact:* **Strategic over-extension:** The leadership team conflated brand momentum during a black-swan event (COVID) with long-term competitive advantage, leading to the deployment of $800M in capital into illiquid, fixed manufacturing assets that could not be scaled back when the "substitute" (gyms) returned.
+
+---
+
+### 2. Decision Tree Analysis (Strategic Scenarios)
+
+In early 2021, Peloton faced two primary branches for the $800M capital allocation:
+
+*   **Branch A: Scale Owned Manufacturing (The Path Taken)**
+    *   *Decision:* Purchase Precor ($400M) + Build Ohio Factory ($400M).
+    *   *Assumption:* 300% demand growth is sustained or grows (Probability: High per management).
+    *   *Outcome:* If demand holds, Peloton captures massive hardware margin and control. If demand drops, Peloton suffers massive fixed-cost drag.
+    *   *Net Result:* **High Risk / High Fixed-Cost Exposure.**
+*   **Branch B: Contract Manufacturing (The Alternative Path)**
+    *   *Decision:* Maintain variable-cost structure through third-party partners.
+    *   *Assumption:* Demand volatility is high; physical capacity should be modular.
+    *   *Outcome:* Lower per-unit margins, but the ability to scale down production instantly without holding $1B in "dead" inventory.
+    *   *Net Result:* **Lower Margin / High Flexibility.**
+
+*Note: The case data indicates management failed to assign any meaningful probability to a decline in demand, treating the $800M investment as a guaranteed ROI rather than a hedge.*
+
+---
+
+### 3. SWOT Analysis
+
+*   **Strengths:** High brand equity; strong software/subscription ecosystem; massive recurring revenue base.
+*   **Weaknesses:** Over-reliance on internal manufacturing (high fixed-cost base); inability to modulate supply chain; bloated inventory levels ($1.05B).
+*   **Opportunities:** Pivot to "Asset-Light" model; expansion into software/app-only subscriptions; leveraging third-party logistics to reduce capital expenditure.
+*   **Threats:** Direct substitutes (gyms/outdoors); high market competition; shifting consumer discretionary spending; negative brand sentiment following layoffs and safety recalls.
+
+---
+
+### 4. Porter's Five Forces
+
+*   **Threat of Substitutes (High):** This was the primary driver of the crisis. When gym closures ended, the "Peloton at home" value proposition was directly challenged by the physical fitness industry, which represents a massive, established substitute.
+*   **Bargaining Power of Buyers (Increased):** By late 2021, buyers had more options. The return of gyms and alternative fitness technologies increased the buyers' ability to walk away, forcing Peloton to discount unsold inventory.
+*   **Competitive Rivalry (High):** As demand cooled, Peloton had to compete with other fitness brands for a shrinking pool of at-home fitness spenders.
+*   **Threat of New Entrants (Moderate):** Lower-cost imitators capitalized on the market segment Peloton initially created but failed to defend at the lower price points.
+*   **Bargaining Power of Suppliers (Moderate):** Peloton's shift to internal manufacturing initially reduced supplier power but increased the company's internal operational risk.
+
+---
+
+### 5. Financial Metrics
+
+*   **Inventory Carrying Impact:** The $1.05B of unsold inventory represents a significant liquidity trap. Assuming a conservative carrying cost (storage, insurance, obsolescence) of 15% annually, this costs the company ~$157.5M per year in pure overhead.
+*   **Capital Allocation ROI:**
+    *   Total Capital Invested (Precor + Factory): **$800M**.
+    *   Fiscal Year 2022 Net Loss: **$439M**.
+    *   The total loss is nearly 55% of the capital invested into expansion, signaling a total failure of the expansion ROI.
+*   **Market Cap Erosion:**
+    *   Peak: >$50B
+    *   80% Decline: Resulting in a loss of **>$40B in shareholder value** within one year.
+
+---
+
+### Final Root-Cause Statement
+*   **The Trigger:** The reversal of COVID-19 lockdowns, which caused an immediate decline in demand for home-exercise hardware.
+*   **The Root Cause:** **Strategic Asset Over-commitment.** Peloton's management failed to differentiate between a temporary spike in customer acquisition and a permanent shift in market demand, leading them to commit $800M in capital to rigid, fixed-manufacturing capacity instead of maintaining a scalable, variable-cost supply chain.

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MASS — Case Diagnosis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --ink: #1A1D23;
+      --paper: #F7F6F2;
+      --paper-raised: #FFFFFF;
+      --verified: #2F6F5E;
+      --verified-bg: #E9F1EE;
+      --flagged: #B8752E;
+      --flagged-bg: #FBF0E3;
+      --rule: #D8D5CC;
+      --muted: #6B6862;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 56px 24px 96px;
+    }
+
+    header.masthead {
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 24px;
+      margin-bottom: 40px;
+    }
+
+    header.masthead .eyebrow {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    header.masthead h1 {
+      font-family: 'Source Serif 4', serif;
+      font-weight: 600;
+      font-size: 34px;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+
+    header.masthead p {
+      color: var(--muted);
+      font-size: 15px;
+      margin: 0;
+      max-width: 54ch;
+    }
+
+    /* Step indicator */
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 40px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+    }
+
+    .steps .step {
+      flex: 1;
+      padding: 10px 0;
+      text-align: center;
+      color: var(--muted);
+      border-bottom: 2px solid var(--rule);
+      text-transform: uppercase;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .steps .step.active {
+      color: var(--ink);
+      border-color: var(--ink);
+      font-weight: 600;
+    }
+
+    .steps .step.done {
+      color: var(--verified);
+      border-color: var(--verified);
+    }
+
+    section.panel {
+      display: none;
+    }
+
+    section.panel.visible {
+      display: block;
+      animation: rise 0.35s ease;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    label.field-label {
+      display: block;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    textarea,
+    input[type="text"] {
+      width: 100%;
+      background: var(--paper-raised);
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      padding: 14px 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      color: var(--ink);
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    textarea:focus,
+    input:focus {
+      outline: 2px solid var(--ink);
+      outline-offset: 1px;
+    }
+
+    .field-block {
+      margin-bottom: 24px;
+    }
+
+    .field-hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    button.primary {
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      border-radius: 3px;
+      padding: 13px 24px;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button.primary:hover {
+      opacity: 0.85;
+    }
+
+    button.primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    button.ghost {
+      background: transparent;
+      border: 1px solid var(--rule);
+      color: var(--muted);
+      border-radius: 3px;
+      padding: 12px 22px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 12px;
+    }
+
+    button.ghost:hover {
+      border-color: var(--ink);
+      color: var(--ink);
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      margin-top: 28px;
+    }
+
+    /* Loading state */
+    .loading-block {
+      padding: 40px 0;
+      text-align: center;
+    }
+
+    .loading-stage {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .loading-dots span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ink);
+      margin: 20px 4px 0;
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    .loading-dots span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .loading-dots span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      80%,
+      100% {
+        opacity: 0.25;
+        transform: scale(0.85);
+      }
+
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Verdict stamp */
+    .stamp-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .stamp {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border-radius: 3px;
+      border: 1.5px solid;
+      transform: rotate(-1.5deg);
+      display: inline-block;
+    }
+
+    .stamp.verified {
+      color: var(--verified);
+      border-color: var(--verified);
+      background: var(--verified-bg);
+    }
+
+    .stamp.flagged {
+      color: var(--flagged);
+      border-color: var(--flagged);
+      background: var(--flagged-bg);
+    }
+
+    .attempts-note {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .reasons-box {
+      background: var(--flagged-bg);
+      border: 1px solid var(--flagged);
+      border-radius: 4px;
+      padding: 18px 20px;
+      margin-bottom: 28px;
+    }
+
+    .reasons-box .reasons-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--flagged);
+      margin-bottom: 10px;
+    }
+
+    .reasons-box ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .reasons-box li {
+      margin-bottom: 6px;
+      font-size: 14.5px;
+    }
+
+    .report-body {
+      background: var(--paper-raised);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 32px;
+      font-size: 15.5px;
+      line-height: 1.7;
+    }
+
+    .report-body h1,
+    .report-body h2,
+    .report-body h3 {
+      font-family: 'Source Serif 4', serif;
+      font-weight: 600;
+      margin: 24px 0 10px;
+      color: var(--ink);
+    }
+
+    .report-body h1:first-child,
+    .report-body h2:first-child,
+    .report-body h3:first-child {
+      margin-top: 0;
+    }
+
+    .report-body h1 {
+      font-size: 22px;
+    }
+
+    .report-body h2 {
+      font-size: 19px;
+    }
+
+    .report-body h3 {
+      font-size: 16px;
+    }
+
+    .report-body p {
+      margin: 0 0 14px;
+    }
+
+    .report-body ul,
+    .report-body ol {
+      margin: 0 0 14px;
+      padding-left: 22px;
+    }
+
+    .report-body li {
+      margin-bottom: 6px;
+    }
+
+    .report-body strong {
+      font-weight: 600;
+    }
+
+    .report-body table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 0 0 16px;
+      font-size: 14.5px;
+    }
+
+    .report-body th,
+    .report-body td {
+      border: 1px solid var(--rule);
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    .report-body th {
+      background: var(--paper);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .draft-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 28px 0 10px;
+    }
+
+    .error-box {
+      background: #FBEAE7;
+      border: 1px solid #C24A3B;
+      color: #8B3225;
+      border-radius: 4px;
+      padding: 16px 18px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    footer.disclaimer {
+      margin-top: 56px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule);
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+
+    <header class="masthead">
+      <div class="eyebrow">MASS — Multi-Agent Analysis &amp; Synthesis</div>
+      <h1>Describe a problem. Get an audited diagnosis.</h1>
+      <p>Every finding below is checked before you see it — and if something couldn't be verified, you'll see exactly
+        why, not a polished answer standing in for one.</p>
+    </header>
+
+    <div class="steps">
+      <div class="step active" id="step-indicator-1">1 · Describe</div>
+      <div class="step" id="step-indicator-2">2 · Review</div>
+      <div class="step" id="step-indicator-3">3 · Diagnosis</div>
+    </div>
+
+    <div id="error-slot"></div>
+
+    <!-- STEP 1: raw description -->
+    <section class="panel visible" id="panel-1">
+      <div class="field-block">
+        <label class="field-label" for="raw-input">What's going on?</label>
+        <textarea id="raw-input" rows="8"
+          placeholder="Describe the situation in your own words — what happened, what led up to it, and any numbers or data you have. Don't worry about organizing it."></textarea>
+        <div class="field-hint">Write it the way you'd explain it to a colleague. The next step will organize it for you
+          to check.</div>
+      </div>
+      <div class="action-row">
+        <button class="primary" id="btn-structure">Organize My Problem</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: structured confirmation -->
+    <section class="panel" id="panel-2">
+      <div class="field-block">
+        <label class="field-label" for="edit-problem">Problem Statement</label>
+        <textarea id="edit-problem" rows="4"></textarea>
+      </div>
+      <div class="field-block">
+        <label class="field-label" for="edit-background">Background</label>
+        <textarea id="edit-background" rows="5"></textarea>
+      </div>
+      <div class="field-block">
+        <label class="field-label" for="edit-data">Supporting Data</label>
+        <textarea id="edit-data" rows="4"></textarea>
+        <div class="field-hint">If this looks thin, that's expected when you didn't give exact figures — don't add
+          numbers here that you're not actually sure of.</div>
+      </div>
+      <div class="action-row">
+        <button class="ghost" id="btn-back-to-1">Back</button>
+        <button class="primary" id="btn-diagnose">Looks Right — Analyze It</button>
+      </div>
+    </section>
+
+    <!-- STEP 3: loading -->
+    <section class="panel" id="panel-loading">
+      <div class="loading-block">
+        <div class="loading-stage" id="loading-stage-label">Researching applicable frameworks</div>
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+      </div>
+    </section>
+
+    <!-- STEP 3: result -->
+    <section class="panel" id="panel-3">
+      <div class="stamp-row">
+        <span class="stamp verified" id="stamp-verified" style="display:none;">✓ Verified</span>
+        <span class="stamp flagged" id="stamp-flagged" style="display:none;">⚑ Flagged for Review</span>
+        <span class="attempts-note" id="attempts-note"></span>
+      </div>
+
+      <div id="reasons-slot"></div>
+
+      <div id="report-slot"></div>
+
+      <div class="action-row">
+        <button class="ghost" id="btn-restart">Start a New Diagnosis</button>
+      </div>
+    </section>
+
+    <footer class="disclaimer">
+      Prototype for demonstration and testing. The intake step that organizes your description into a structured problem
+      is new and not yet independently validated the same way the rest of this system has been — it's designed to never
+      invent facts you didn't provide, and you're checking its work in Step 2 before anything runs on it. A "Flagged for
+      Review" result means the system's own audit stage couldn't fully verify part of the analysis — that's the system
+      correctly declining to present something it isn't confident in, not a bug.
+    </footer>
+
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const els = {
+      rawInput: document.getElementById('raw-input'),
+      btnStructure: document.getElementById('btn-structure'),
+      btnBackTo1: document.getElementById('btn-back-to-1'),
+      btnDiagnose: document.getElementById('btn-diagnose'),
+      btnRestart: document.getElementById('btn-restart'),
+      editProblem: document.getElementById('edit-problem'),
+      editBackground: document.getElementById('edit-background'),
+      editData: document.getElementById('edit-data'),
+      panels: {
+        1: document.getElementById('panel-1'),
+        2: document.getElementById('panel-2'),
+        loading: document.getElementById('panel-loading'),
+        3: document.getElementById('panel-3'),
+      },
+      indicators: {
+        1: document.getElementById('step-indicator-1'),
+        2: document.getElementById('step-indicator-2'),
+        3: document.getElementById('step-indicator-3'),
+      },
+      errorSlot: document.getElementById('error-slot'),
+      loadingStageLabel: document.getElementById('loading-stage-label'),
+      stampVerified: document.getElementById('stamp-verified'),
+      stampFlagged: document.getElementById('stamp-flagged'),
+      attemptsNote: document.getElementById('attempts-note'),
+      reasonsSlot: document.getElementById('reasons-slot'),
+      reportSlot: document.getElementById('report-slot'),
+    };
+
+    function showPanel(name) {
+      Object.values(els.panels).forEach(p => p.classList.remove('visible'));
+      els.panels[name].classList.add('visible');
+    }
+
+    function setStepIndicator(step) {
+      [1, 2, 3].forEach(n => {
+        els.indicators[n].classList.remove('active', 'done');
+        if (n < step) els.indicators[n].classList.add('done');
+        if (n === step) els.indicators[n].classList.add('active');
+      });
+    }
+
+    function showError(message) {
+      els.errorSlot.innerHTML = `<div class="error-box">${message}</div>`;
+    }
+
+    function clearError() {
+      els.errorSlot.innerHTML = '';
+    }
+
+    // Splits the "## Problem Statement\n...\n\n## Background\n...\n\n## Supporting Data\n..."
+    // format (matches intake.py's INTAKE_DESCRIPTION output contract) into three parts.
+    function splitStructured(text) {
+      const problem = text.match(/## Problem Statement\s*\n([\s\S]*?)(?=\n## Background|$)/i);
+      const background = text.match(/## Background\s*\n([\s\S]*?)(?=\n## Supporting Data|$)/i);
+      const data = text.match(/## Supporting Data\s*\n([\s\S]*)/i);
+      return {
+        problem: problem ? problem[1].trim() : '',
+        background: background ? background[1].trim() : '',
+        data: data ? data[1].trim() : '',
+      };
+    }
+
+    function reassembleStructured() {
+      return `## Problem Statement\n${els.editProblem.value.trim()}\n\n` +
+        `## Background\n${els.editBackground.value.trim()}\n\n` +
+        `## Supporting Data\n${els.editData.value.trim()}`;
+    }
+
+    const loadingStages = [
+      "Researching applicable frameworks",
+      "Applying frameworks to your case",
+      "Auditing the analysis",
+      "Preparing your report",
+    ];
+    let loadingInterval = null;
+
+    function startLoadingAnimation() {
+      let i = 0;
+      els.loadingStageLabel.textContent = loadingStages[0];
+      loadingInterval = setInterval(() => {
+        i = (i + 1) % loadingStages.length;
+        els.loadingStageLabel.textContent = loadingStages[i];
+      }, 3500);
+    }
+
+    function stopLoadingAnimation() {
+      if (loadingInterval) clearInterval(loadingInterval);
+    }
+
+    els.btnStructure.addEventListener('click', async () => {
+      clearError();
+      const raw = els.rawInput.value.trim();
+      if (!raw) {
+        showError("Describe the problem before continuing.");
+        return;
+      }
+      els.btnStructure.disabled = true;
+      els.btnStructure.textContent = "Organizing…";
+      try {
+        const res = await fetch(`${API_BASE}/structure`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_input: raw }),
+        });
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        const data = await res.json();
+        const parts = splitStructured(data.structured_input);
+        els.editProblem.value = parts.problem;
+        els.editBackground.value = parts.background;
+        els.editData.value = parts.data;
+        showPanel(2);
+        setStepIndicator(2);
+      } catch (err) {
+        showError(`Couldn't organize your description: ${err.message}. Confirm the API is running at ${API_BASE}.`);
+      } finally {
+        els.btnStructure.disabled = false;
+        els.btnStructure.textContent = "Organize My Problem";
+      }
+    });
+
+    els.btnBackTo1.addEventListener('click', () => {
+      clearError();
+      showPanel(1);
+      setStepIndicator(1);
+    });
+
+    els.btnDiagnose.addEventListener('click', async () => {
+      clearError();
+      const structured = reassembleStructured();
+      showPanel('loading');
+      startLoadingAnimation();
+      try {
+        const res = await fetch(`${API_BASE}/diagnose`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ structured_input: structured, max_revisions: 1 }),
+        });
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        const data = await res.json();
+        renderResult(data);
+        showPanel(3);
+        setStepIndicator(3);
+      } catch (err) {
+        showPanel(2);
+        setStepIndicator(2);
+        showError(`Couldn't complete the diagnosis: ${err.message}. Confirm the API is running at ${API_BASE}.`);
+      } finally {
+        stopLoadingAnimation();
+      }
+    });
+
+    function renderResult(data) {
+      els.stampVerified.style.display = 'none';
+      els.stampFlagged.style.display = 'none';
+      els.reasonsSlot.innerHTML = '';
+      els.reportSlot.innerHTML = '';
+
+      els.attemptsNote.textContent = data.total_attempts > 1
+        ? `Revised once before this result.`
+        : `Completed on the first pass.`;
+
+      if (data.status === 'SYNTHESIZED') {
+        els.stampVerified.style.display = 'inline-block';
+        els.reportSlot.innerHTML = `<div class="report-body">${marked.parse(data.report || '')}</div>`;
+      } else {
+        els.stampFlagged.style.display = 'inline-block';
+        const reasonItems = (data.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join('');
+        els.reasonsSlot.innerHTML = `
+        <div class="reasons-box">
+          <div class="reasons-title">Why this wasn't fully verified</div>
+          <ul>${reasonItems}</ul>
+        </div>`;
+        els.reportSlot.innerHTML = `
+        <div class="draft-label">Best-effort draft — not independently verified</div>
+        <div class="report-body">${marked.parse(data.draft || '')}</div>`;
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    els.btnRestart.addEventListener('click', () => {
+      clearError();
+      els.rawInput.value = '';
+      els.editProblem.value = '';
+      els.editBackground.value = '';
+      els.editData.value = '';
+      showPanel(1);
+      setStepIndicator(1);
+    });
+  </script>
+</body>
+
+</html>
