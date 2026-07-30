@@ -19,6 +19,8 @@
       --verified-bg: #E9F1EE;
       --flagged: #B8752E;
       --flagged-bg: #FBF0E3;
+      --fidelity: #5B5A9C;
+      --fidelity-bg: #EDECF5;
       --rule: #D8D5CC;
       --muted: #6B6862;
     }
@@ -291,6 +293,12 @@
       background: var(--flagged-bg);
     }
 
+    .stamp.fidelity {
+      color: var(--fidelity);
+      border-color: var(--fidelity);
+      background: var(--fidelity-bg);
+    }
+
     .attempts-note {
       font-size: 13px;
       color: var(--muted);
@@ -498,6 +506,7 @@
       <div class="stamp-row">
         <span class="stamp verified" id="stamp-verified" style="display:none;">✓ Verified</span>
         <span class="stamp flagged" id="stamp-flagged" style="display:none;">⚑ Flagged for Review</span>
+        <span class="stamp fidelity" id="stamp-fidelity" style="display:none;">◐ Write-Up Flagged</span>
         <span class="attempts-note" id="attempts-note"></span>
       </div>
 
@@ -506,6 +515,7 @@
       <div id="report-slot"></div>
 
       <div class="action-row">
+        <button class="primary" id="btn-retry" style="display:none;">Try Again</button>
         <button class="ghost" id="btn-restart">Start a New Diagnosis</button>
       </div>
     </section>
@@ -529,6 +539,7 @@
       btnBackTo1: document.getElementById('btn-back-to-1'),
       btnDiagnose: document.getElementById('btn-diagnose'),
       btnRestart: document.getElementById('btn-restart'),
+      btnRetry: document.getElementById('btn-retry'),
       editProblem: document.getElementById('edit-problem'),
       editBackground: document.getElementById('edit-background'),
       editData: document.getElementById('edit-data'),
@@ -547,14 +558,87 @@
       loadingStageLabel: document.getElementById('loading-stage-label'),
       stampVerified: document.getElementById('stamp-verified'),
       stampFlagged: document.getElementById('stamp-flagged'),
+      stampFidelityFailure: document.getElementById('stamp-fidelity'),
       attemptsNote: document.getElementById('attempts-note'),
       reasonsSlot: document.getElementById('reasons-slot'),
       reportSlot: document.getElementById('report-slot'),
     };
 
+    // --- Persistence -----------------------------------------------------
+    // Plain static page, no backend session -- all state lives only in JS
+    // variables in this one tab. A background reload (e.g. the browser
+    // discarding an inactive tab to save memory) wipes it entirely with no
+    // warning, landing back on a blank first-visit screen. sessionStorage
+    // fixes this: survives reload/tab-switching for as long as the tab
+    // stays open, clears on actual tab close (unlike localStorage, which
+    // would keep old completed diagnoses around indefinitely).
+    const STORAGE_KEY = 'mass-demo-state-v1';
+    let currentPanelName = 1;
+    let lastResultData = null;
+
+    function saveState() {
+      const state = {
+        panel: currentPanelName,
+        rawInput: els.rawInput.value,
+        editProblem: els.editProblem.value,
+        editBackground: els.editBackground.value,
+        editData: els.editData.value,
+        resultData: lastResultData,
+      };
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        // sessionStorage can fail (private browsing, quota, disabled) --
+        // losing persistence is no worse than the original bug, so fail
+        // silently rather than breaking the app over a nice-to-have.
+      }
+    }
+
+    function restoreState() {
+      let saved;
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        saved = JSON.parse(raw);
+      } catch (e) {
+        return; // corrupted/inaccessible storage -- just start fresh
+      }
+
+      els.rawInput.value = saved.rawInput || '';
+      els.editProblem.value = saved.editProblem || '';
+      els.editBackground.value = saved.editBackground || '';
+      els.editData.value = saved.editData || '';
+
+      if (saved.panel === 'loading') {
+        // A diagnosis was in flight when the tab was reloaded/backgrounded.
+        // That request is gone -- the fetch and its Promise chain don't
+        // survive a reload. There's nothing to resume, so land on the
+        // structured-input step with an explicit notice rather than
+        // stranding the user on a loading screen that will never resolve.
+        showPanel(2);
+        setStepIndicator(2);
+        showError("Your previous diagnosis was interrupted (the tab was reloaded or backgrounded mid-request). Your structured input below is unchanged — press “Looks Right — Analyze It” to try again.");
+        return;
+      }
+
+      if (saved.panel === 3 && saved.resultData) {
+        lastResultData = saved.resultData;
+        renderResult(saved.resultData);
+        showPanel(3);
+        setStepIndicator(3);
+        return;
+      }
+
+      const panel = saved.panel || 1;
+      showPanel(panel);
+      setStepIndicator(panel);
+    }
+
     function showPanel(name) {
       Object.values(els.panels).forEach(p => p.classList.remove('visible'));
       els.panels[name].classList.add('visible');
+      currentPanelName = name;
+      saveState();
     }
 
     function setStepIndicator(step) {
@@ -613,6 +697,10 @@
       if (loadingInterval) clearInterval(loadingInterval);
     }
 
+    [els.rawInput, els.editProblem, els.editBackground, els.editData].forEach(ta => {
+      ta.addEventListener('input', saveState);
+    });
+
     els.btnStructure.addEventListener('click', async () => {
       clearError();
       const raw = els.rawInput.value.trim();
@@ -650,7 +738,12 @@
       setStepIndicator(1);
     });
 
-    els.btnDiagnose.addEventListener('click', async () => {
+    // Shared by both the original "Analyze It" button and the "Try Again"
+    // button on a flagged result -- both cases resubmit whatever is
+    // currently in the Step 2 fields (reassembleStructured() always reads
+    // the live textarea values, not a cached copy), so a retry uses
+    // exactly the same input, not a stale snapshot from the first attempt.
+    async function runDiagnosis() {
       clearError();
       const structured = reassembleStructured();
       showPanel('loading');
@@ -673,11 +766,20 @@
       } finally {
         stopLoadingAnimation();
       }
-    });
+    }
+
+    els.btnDiagnose.addEventListener('click', runDiagnosis);
+    els.btnRetry.addEventListener('click', runDiagnosis);
 
     function renderResult(data) {
+      lastResultData = data;
       els.stampVerified.style.display = 'none';
       els.stampFlagged.style.display = 'none';
+      els.stampFidelityFailure.style.display = 'none';
+      // Retry only makes sense on a flagged result -- a clean SYNTHESIZED
+      // pass has nothing to retry. Reset to hidden here; the two flagged
+      // branches below turn it back on explicitly.
+      els.btnRetry.style.display = 'none';
       els.reasonsSlot.innerHTML = '';
       els.reportSlot.innerHTML = '';
 
@@ -688,8 +790,26 @@
       if (data.status === 'SYNTHESIZED') {
         els.stampVerified.style.display = 'inline-block';
         els.reportSlot.innerHTML = `<div class="report-body">${marked.parse(data.report || '')}</div>`;
+      } else if (data.status === 'FLAGGED_FIDELITY_FAILURE') {
+        // The diagnosis itself passed review -- only the polished write-up
+        // drifted from it. This is a materially different, less concerning
+        // situation than an audit failure and needs its own message, not
+        // the generic "wasn't verified" framing used below -- same
+        // reasoning as api.py's separate simplify_fidelity_feedback().
+        els.stampFidelityFailure.style.display = 'inline-block';
+        els.btnRetry.style.display = 'inline-block';
+        const reasonItems = (data.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join('');
+        els.reasonsSlot.innerHTML = `
+        <div class="reasons-box fidelity">
+          <div class="reasons-title">The analysis passed review — the write-up just didn't match it exactly</div>
+          <ul>${reasonItems}</ul>
+        </div>`;
+        els.reportSlot.innerHTML = `
+        <div class="draft-label">Best-effort write-up — not yet verified against the underlying analysis</div>
+        <div class="report-body">${marked.parse(data.draft || '')}</div>`;
       } else {
         els.stampFlagged.style.display = 'inline-block';
+        els.btnRetry.style.display = 'inline-block';
         const reasonItems = (data.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join('');
         els.reasonsSlot.innerHTML = `
         <div class="reasons-box">
@@ -714,9 +834,13 @@
       els.editProblem.value = '';
       els.editBackground.value = '';
       els.editData.value = '';
+      lastResultData = null;
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
       showPanel(1);
       setStepIndicator(1);
     });
+
+    restoreState();
   </script>
 </body>
 

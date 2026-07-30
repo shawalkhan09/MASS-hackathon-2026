@@ -5,15 +5,32 @@ unstructured problem description into the structured diagnostic-input
 format (Problem Statement / Background / Supporting Data) the existing
 pipeline (crewai_pipeline.py) expects.
 
-THIS IS A NEW, NOT-YET-VALIDATED COMPONENT. Every other agent in this
-project (Researcher, Analyst, Auditor, Orchestrator) went through a
-build-test-find-a-real-defect-fix cycle before being trusted (see
-DEVELOPMENT_LOG.md Phases 11-13, 25). This one hasn't yet, and the task
-it performs is exactly the shape of task most likely to reproduce the
-project's central failure mode: turning something vague into something
-that reads as complete and specific is precisely what "fabrication under
-pressure" (Section 8 of the report) means. Two design decisions try to
-manage that risk before a proper validation pass exists:
+VALIDATION STATUS (Phase 35): a first validation pass targeted
+specifically at this module's named risk has been run and passed.
+Three fixtures spanning zero, one, and several concrete figures -- each
+with the exact ground truth documented in advance -- were run 5 times
+each (15 trials total, the same n=5 scale as the fidelity check's first
+calibration round, Section 6.7 of the report). Across all 15 trials:
+zero fabricated numbers, dates, or figures; the zero-data fixture
+correctly stated no concrete data was provided in every trial rather
+than inventing any; and -- a subtler property not explicitly named in
+the task instructions below, found by reading output against input
+rather than only checking whether numbers matched -- every hedge the
+user actually stated ("seems related, though unconfirmed," "might be...
+haven't dug into it") was preserved rather than promoted into an
+unstated certainty, in every trial. Full fixtures and results in
+DEVELOPMENT_LOG.md Phase 35.
+
+This is a first pass, not exhaustive validation -- it tests exactly the
+risk this module's design was worried about, not every possible input
+shape. Untested: long, rambling, multi-topic input; genuine
+section-boundary ambiguity; and vague quantifiers that might get
+mistakenly promoted into concrete figures (e.g. "about half our
+customers" becoming a stated percentage). These aren't known failures,
+they simply haven't been tried yet.
+
+Two design decisions manage the module's risk independent of this
+validation pass, and remain in place regardless of it:
 
 1. The task instructions explicitly forbid inventing any fact, number,
    or specific the user did not state, mirroring the Analyst's own
@@ -21,24 +38,14 @@ manage that risk before a proper validation pass exists:
    being written from scratch.
 2. This step's output is designed to be shown back to the user for
    confirmation or correction BEFORE it is used for anything -- see the
-   /structure vs /diagnose split in api.py. A human check on the one
-   new, unvalidated step in this pipeline is the safety net actually
-   doing the work here, not the instruction wording alone (same
-   "restrict the risk structurally, don't just instruct" principle as
-   ROADMAP.md Section 2 -- applied here by keeping a human in the loop,
-   since there's no upstream *approved* content this step could
-   structurally be limited to the way the Orchestrator is limited to
-   the Analyst's approved diagnosis).
+   /structure vs /diagnose split in api.py. A human check on this step
+   is a safety net independent of the wording or the validation above,
+   not a replacement for either (same "restrict the risk structurally,
+   don't just instruct" principle as ROADMAP.md Section 2).
 
 Convention match: llm=MODEL always explicit, imported from
 crewai_pipeline rather than redeclared (Phase 9's fix; Phase 28's
 rename).
-
-Before this component is trusted the way the rest of the pipeline now
-is, it should go through its own real validation pass: construct known
-vague-vs-specific test inputs and confirm it doesn't invent Supporting
-Data figures the input didn't contain, the same way Check 2 was
-calibrated against real observed failures rather than assumed correct.
 
 Run:
     python3 intake.py       # quick check against a sample description

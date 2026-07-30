@@ -2035,3 +2035,35 @@ per-check re-verification is the one that removes the shared context
 entirely, not the one that tries to word around it a third time.
 
 ---
+
+## Phase 35 — First Validation Pass for the Intake Agent
+
+Setup: intake.py (the Intake Specialist -- converts a user's raw free-text problem description into the Problem Statement / Background / Supporting Data format the rest of the pipeline expects) has been in the project since before this phase without ever going through the build-test-find-a-real-defect cycle every other agent went through. Its own docstring named the specific risk: turning something vague into something that reads as complete and specific is exactly the shape of "fabrication under pressure" this project's central empirical result (Section 8 of the report) is about. This phase is that first pass.
+
+Design: three fixtures spanning how much concrete data is actually present, each with the exact ground truth documented before any output was generated, so any number appearing in the output that isn't in the ground truth is an unambiguous fabrication:
+
+FIXTURE_SPARSE -- zero concrete numbers or dates anywhere in the input, only qualitative complaints and an explicitly hedged internal hypothesis ("our team thinks it might be... but we honestly haven't dug into it").
+FIXTURE_ONE_NUMBER -- exactly one figure (340%, a late-delivery complaint increase), with an explicitly hedged causal claim ("it seems related, though we haven't confirmed it") about a carrier switch.
+FIXTURE_DETAILED -- seven concrete figures (a subscription tier's price, its comparison tier's price, projected vs. actual signups, two churn rates) and one stated reason for cancellation.
+
+Each fixture was run 5 times (15 trials total), matching the n=5 scale used for the fidelity check's first calibration round (Section 6.7), not yet the Auditor's own n=9 standard (Section 8.7).
+
+Result: clean across all three axes checked, all 15 trials. FIXTURE_SPARSE stated explicitly that no concrete data was provided in every trial, rather than inventing a percentage or dollar figure to make the section look complete. FIXTURE_ONE_NUMBER surfaced exactly 340% and nothing else numeric in every trial. FIXTURE_DETAILED listed exactly the seven given figures in every trial, with no invented revenue-impact number and no additional cancellation reason. A fourth property, not originally planned as a separate check but verified directly: both fixtures containing a hedged causal claim ("seems related, though unconfirmed"; "might be... haven't dug into it") preserved that hedge in all 5 trials each, rather than promoting it into an unstated certainty -- a subtler failure mode than fabricating a number, and one the task instructions don't explicitly name, so this wasn't guaranteed by the prompt alone.
+
+What this does and does not establish: this is a first validation pass targeted specifically at the risk the module's own docstring identified, not exhaustive validation of the component. Untested: long, rambling, multi-topic input; genuine ambiguity about which section a fact belongs in (the task's own stated tolerance for using judgement on placement without adding content); and inputs containing vague quantifiers that might get mistakenly promoted into concrete figures (e.g. "about half our customers" becoming a stated percentage). None of these were observed to fail -- they simply weren't tested here, and are noted as such rather than assumed covered by the three fixtures that were run.
+
+Fix: intake.py's module docstring updated to replace the blanket "NOT-YET-VALIDATED" warning with an accurate account of what has and hasn't been checked, referencing this phase.
+
+Lesson: the same evidentiary standard applied to every other component's first validation pass applies here too -- a clean result across a targeted set of fixtures is real evidence for the specific risk those fixtures test, not a general clearance. The hedge- preservation finding in particular was not something the test was designed in advance to check for; it surfaced from actually reading the output against the input rather than only checking whether numbers matched, the same discipline that found the cross-contamination regression in Phase 34 by reading verdict text rather than trusting a PASS/FAIL count alone.
+
+---
+
+## Phase 36 — Ohio Warehouse Externality Stress-Test (Check 1, Part B)
+
+Problem: Constructed a synthetic test case (Ohio Warehouse shipping failures) with an entirely internally-caused root cause — a company-elected software migration, no independent external event — and ran it through the full /diagnose pipeline across multiple Analyst drafts. Every attempt returned FLAGGED_FOR_REVIEW, surfaced to the frontend only as a generic fallback message with no visible specifics.
+
+Diagnosis: Captured raw, unprocessed audit output (capture_raw_audit_output.log) to bypass simplify_audit_feedback() and see the Auditor's actual verdict. Confirmed Check 1 Part B (Trigger Is Genuinely External) failed consistently across three independently-worded attempts, each recasting the trigger with progressively subtler phrasing — "Internal Process Change" → "notification of shipment error reports" → "unexpected operational volatility following go-live" — all correctly rejected as internal decisions in disguise. Check 2 (Fabricated Ranking Scan) passed clean in the same run, including a case where the Analyst explicitly declined to fabricate a Pareto breakdown given missing categorical data, correctly avoiding the Phase 22 fabrication pattern. Separately investigated whether the generic fallback message indicated missing Check 1 extraction logic in simplify_audit_feedback() — confirmed the Part A/Part B regex branches are present and functioning (the docstring documents that this superseded an earlier bug where Check 1's regex looked for a literal "Explanation:" label that Check 1 never produces).
+
+Fix: None required. The system behaved correctly at every layer — Auditor, extraction, and API response.
+
+Lesson: Check 1 Part B holds the line against relabeling an elective internal decision as an external trigger, regardless of surface rewording. This is a positive validation of the Auditor's externality check, complementary to the Phase 24 omission-blindness finding rather than contradicting it. It also confirms that a FLAGGED_FOR_REVIEW result is not always an Analyst writing defect — unlike Southwest, Boeing, and Peloton (each with a genuine external precipitating event), some constructed cases simply lack an external trigger, and the audit correctly reflects that rather than the phrasing.
