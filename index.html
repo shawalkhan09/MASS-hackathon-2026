@@ -199,7 +199,8 @@
       font-family: 'Inter', sans-serif;
       font-size: 14px;
       cursor: pointer;
-      margin-right: 12px;
+      margin-right: 2px;
+      margin-left: 12px;
     }
 
     button.ghost:hover {
@@ -436,6 +437,38 @@
       color: var(--muted);
       line-height: 1.6;
     }
+
+    /* Print / "Download PDF" -- reuses the already-rendered report DOM
+       rather than a second server-side renderer. Hides everything that
+       isn't the actual diagnosis content: masthead, step indicator,
+       error slot, every action button (including Download itself), and
+       the disclaimer footer. Left visible: the verdict stamp, the
+       reasons box (if flagged), and the report/draft body -- i.e.
+       everything a reader would want on the printed page. */
+    @media print {
+
+      header.masthead,
+      .steps,
+      #error-slot,
+      .action-row,
+      footer.disclaimer {
+        display: none !important;
+      }
+
+      body {
+        background: #FFFFFF;
+      }
+
+      .shell {
+        max-width: none;
+        padding: 0;
+      }
+
+      .report-body {
+        border: none;
+        padding: 0;
+      }
+    }
   </style>
 </head>
 
@@ -516,6 +549,7 @@
 
       <div class="action-row">
         <button class="primary" id="btn-retry" style="display:none;">Try Again</button>
+        <button class="ghost" id="btn-download" style="display:none;">Download Report (PDF)</button>
         <button class="ghost" id="btn-restart">Start a New Diagnosis</button>
       </div>
     </section>
@@ -540,6 +574,7 @@
       btnDiagnose: document.getElementById('btn-diagnose'),
       btnRestart: document.getElementById('btn-restart'),
       btnRetry: document.getElementById('btn-retry'),
+      btnDownload: document.getElementById('btn-download'),
       editProblem: document.getElementById('edit-problem'),
       editBackground: document.getElementById('edit-background'),
       editData: document.getElementById('edit-data'),
@@ -771,6 +806,16 @@
     els.btnDiagnose.addEventListener('click', runDiagnosis);
     els.btnRetry.addEventListener('click', runDiagnosis);
 
+    // "Download" opens the browser's native print dialog rather than
+    // writing a file directly -- it reuses the exact DOM already on
+    // screen (via the @media print rules above) instead of running a
+    // second, separate PDF renderer that could drift from what the user
+    // is actually looking at. Any modern browser's "Save as PDF"
+    // destination turns this into a real downloaded file.
+    els.btnDownload.addEventListener('click', () => {
+      window.print();
+    });
+
     function renderResult(data) {
       lastResultData = data;
       els.stampVerified.style.display = 'none';
@@ -783,6 +828,12 @@
       els.reasonsSlot.innerHTML = '';
       els.reportSlot.innerHTML = '';
 
+      // Download applies to all three statuses -- SYNTHESIZED has a
+      // finished report, and both flagged statuses still populate
+      // report-slot with a labelled draft below. Unlike Retry, there's
+      // no branch where this stays hidden.
+      els.btnDownload.style.display = 'inline-block';
+
       els.attemptsNote.textContent = data.total_attempts > 1
         ? `Revised once before this result.`
         : `Completed on the first pass.`;
@@ -790,6 +841,7 @@
       if (data.status === 'SYNTHESIZED') {
         els.stampVerified.style.display = 'inline-block';
         els.reportSlot.innerHTML = `<div class="report-body">${marked.parse(data.report || '')}</div>`;
+        document.title = 'MASS Diagnosis Report — Verified';
       } else if (data.status === 'FLAGGED_FIDELITY_FAILURE') {
         // The diagnosis itself passed review -- only the polished write-up
         // drifted from it. This is a materially different, less concerning
@@ -807,6 +859,7 @@
         els.reportSlot.innerHTML = `
         <div class="draft-label">Best-effort write-up — not yet verified against the underlying analysis</div>
         <div class="report-body">${marked.parse(data.draft || '')}</div>`;
+        document.title = 'MASS Diagnosis Draft — Write-Up Flagged';
       } else {
         els.stampFlagged.style.display = 'inline-block';
         els.btnRetry.style.display = 'inline-block';
@@ -819,6 +872,7 @@
         els.reportSlot.innerHTML = `
         <div class="draft-label">Best-effort draft — not independently verified</div>
         <div class="report-body">${marked.parse(data.draft || '')}</div>`;
+        document.title = 'MASS Diagnosis Draft — Flagged for Review';
       }
     }
 
@@ -835,7 +889,8 @@
       els.editBackground.value = '';
       els.editData.value = '';
       lastResultData = null;
-      try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      document.title = 'MASS — Case Diagnosis';
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { }
       showPanel(1);
       setStepIndicator(1);
     });
