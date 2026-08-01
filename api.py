@@ -184,6 +184,99 @@ def simplify_audit_feedback(audit_text: str) -> List[str]:
                     "data provided: " + first_line
                 )
 
+    check3_overall_fail = re.search(
+        r"Check 3.*?Status:\s*FAIL", audit_text, re.DOTALL | re.IGNORECASE
+    )
+    if check3_overall_fail:
+        # Bounded to stop before any NEXT "###" heading (some real
+        # responses append bonus commentary, e.g. "### Audit Summary",
+        # after Check 3's own Instances-found list -- that's not part
+        # of Check 3's structured output and must not be scanned for
+        # quotes, or its own quoted fragments get mixed in).
+        check3_section_match = re.search(
+            r"Check 3.*?(?=\n###|\Z)", audit_text, re.DOTALL | re.IGNORECASE
+        )
+        check3_text = check3_section_match.group(0)
+        # Check 3's real output format varies more than Check 1/2's --
+        # numbered, bulleted, bold-labeled, and FAIL appearing before OR
+        # after the quoted claim have all been observed across this
+        # project's Check 3 test rounds. Splitting into per-instance
+        # chunks first (numbered "1."/"2." or bulleted "-"/"*", which
+        # every observed format uses) and matching quotes WITHIN each
+        # chunk, rather than across the whole section, matters more
+        # than it looks: a single unpaired quote character anywhere
+        # earlier in the section (e.g. inside a PASS instance's own
+        # reasoning) silently shifts which text falls "between quotes"
+        # for every match after it, for the rest of the document.
+        # Resetting quote-pairing at each instance boundary contains
+        # that failure to at most the one instance it happens in.
+        #
+        # Within a chunk, quote-pairing itself is done with NO length
+        # bound first (`[^”\"]*`, not `{20,500}`) and length is only
+        # filtered afterward as a separate step -- confirmed against
+        # real captured Check 3 output that embedding a length bound
+        # directly in the pairing regex causes the SAME misalignment
+        # bug it's meant to avoid: any quote pair outside the bound
+        # (too short, e.g. "integration latency", or too long, e.g. a
+        # full quoted 5-Whys question+answer) gets silently skipped by
+        # the pairing itself, which shifts every subsequent open/close
+        # match in that chunk by one, turning them into the prose
+        # BETWEEN real quotes instead of the quotes themselves.
+        check3_reasons = []
+        seen = set()
+        for chunk in re.split(r"\n\s*(?:\d+\.|[-*])\s+", check3_text):
+            # Case-SENSITIVE on purpose: the model always writes its
+            # verdict marker as uppercase FAIL/PASS, but ordinary
+            # prose inside a PASS instance can contain the lowercase
+            # word "fail" naturally (e.g. a quoted 5-Whys question
+            # like "why did the synchronization fail..."). Matching
+            # case-insensitively pulled PASS instances' own quotes
+            # into the output -- confirmed against real captured
+            # output where this happened.
+            if not re.search(r"\bFAIL\b", chunk):
+                continue
+            all_quotes = re.findall(r"[“\"]([^”\"]*)[”\"]", chunk)
+            candidates = [q.strip() for q in all_quotes if 20 <= len(q.strip()) <= 500]
+            if not candidates:
+                continue
+            # A FAIL instance's own reasoning routinely quotes the
+            # case input back as justification for why a claim is a
+            # violation (e.g. "...explicitly states 'the mechanism is
+            # not established.'"). That reference quote can be LONGER
+            # than the actual flagged claim, which defeats a plain
+            # longest-wins pick. But a quote that itself preserves
+            # uncertainty can never be the violation -- Check 3 exists
+            # to catch claims that FAIL to hedge -- so hedge-shaped
+            # quotes are excluded first; the flagged claim is then the
+            # longest of what's left. Confirmed against real captured
+            # output where the unfiltered longest-quote picked the
+            # case input's own hedge sentence instead of the fabricated
+            # claim it was quoted to contrast against.
+            HEDGE_MARKERS = (
+                "not established", "still investigating", "currently investigating",
+                "under investigation", "remains unconfirmed", "unidentified",
+                "unresolved", "unestablished", "still gathering data",
+            )
+            non_hedge = [q for q in candidates if not any(h in q.lower() for h in HEDGE_MARKERS)]
+            quote = max(non_hedge or candidates, key=len)
+            key = quote[:60]
+            if key in seen:
+                continue
+            seen.add(key)
+            check3_reasons.append(quote)
+
+        for quote in check3_reasons[:3]:
+            reasons.append(
+                "A specific detail was presented as settled fact even "
+                "though the case said this was still unresolved: “" + quote + "”"
+            )
+        if not check3_reasons:
+            reasons.append(
+                "Our reviewer found a specific detail treated as confirmed "
+                "even though the case said the cause was still under "
+                "investigation. See the full technical review for specifics."
+            )
+
     if not reasons:
         reasons.append(
             "Our reviewer flagged something in this analysis as not "

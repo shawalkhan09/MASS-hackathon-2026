@@ -126,7 +126,7 @@ FIXTURES = [
      "settled explanation."),
 ]
 
-N_TRIALS = 3
+N_TRIALS = 9
 MAX_REVISIONS = 1
 DELAY_BETWEEN_TRIALS_SECONDS = 30
 
