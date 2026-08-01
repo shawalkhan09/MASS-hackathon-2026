@@ -71,11 +71,48 @@ needs NO changes -- it calls this the same way regardless of how many
 LLM calls happen underneath.
 """
 
+import re
 import time
+import warnings
 
 from crewai import Agent, Task, Crew
 
 from crewai_pipeline import MODEL
+
+# ---------------------------------------------------------------------------
+# Shared verdict-parsing helper for run_check_a/b/c below -- same
+# find-all-occurrences-take-last-plus-warn fix as crewai_pipeline.py's
+# parse_verdict(), applied per-check instead of duplicated three times.
+# This is a plain Python parsing helper, not shared prompt content, so it
+# doesn't reintroduce the cross-check LLM-context bleed this module's
+# isolated-Agent-per-check design exists to prevent (see module docstring)
+# -- each check's own LLM call still never sees another check's prompt.
+# ---------------------------------------------------------------------------
+
+
+def _extract_check_verdict(verdict_text: str, pattern: "re.Pattern", check_label: str) -> bool:
+    """
+    True if PASS, False if FAIL or unparseable (fails SAFE, same as
+    crewai_pipeline.py's parse_verdict()). If the pattern matches more
+    than once in a single response -- the same visible self-correction
+    signature found in harbor_vine trial 3 (Auditor Check 3) -- the LAST
+    occurrence is authoritative, matching the model's own final
+    conclusion, and a warning is emitted so the run is inspectable
+    without changing what any caller receives.
+    """
+    matches = pattern.findall(verdict_text)
+    if not matches:
+        return False
+    if len(matches) > 1:
+        warnings.warn(
+            f"{check_label}: {len(matches)} verdict occurrences found in "
+            f"one response (self-correction pattern) -- sequence seen: "
+            f"{[m.upper() for m in matches]}. Using the LAST occurrence "
+            f"({matches[-1].upper()}) as authoritative, matching the "
+            f"model's own final conclusion.",
+            stacklevel=3,
+        )
+    return matches[-1].upper() == "PASS"
 
 # ---------------------------------------------------------------------------
 # Check A -- New Content Scan (isolated)
@@ -139,6 +176,8 @@ CHECK_A_EXPECTED_OUTPUT = (
     "every instance found quoted from the report."
 )
 
+CHECK_A_VERDICT_PATTERN = re.compile(r"##\s*Check A Verdict:\s*(PASS|FAIL)", re.IGNORECASE)
+
 
 def run_check_a(approved_diagnosis: str, final_report: str) -> dict:
     task = Task(
@@ -151,7 +190,7 @@ def run_check_a(approved_diagnosis: str, final_report: str) -> dict:
         "approved_diagnosis": approved_diagnosis,
         "final_report": final_report,
     }))
-    passed = verdict_text.strip().startswith("## Check A Verdict: PASS")
+    passed = _extract_check_verdict(verdict_text, CHECK_A_VERDICT_PATTERN, "Check A")
     return {"passed": passed, "verdict_text": verdict_text}
 
 
@@ -236,6 +275,8 @@ CHECK_B_EXPECTED_OUTPUT = (
     "report."
 )
 
+CHECK_B_VERDICT_PATTERN = re.compile(r"##\s*Check B Verdict:\s*(PASS|FAIL)", re.IGNORECASE)
+
 
 def run_check_b(approved_diagnosis: str, final_report: str) -> dict:
     task = Task(
@@ -248,7 +289,7 @@ def run_check_b(approved_diagnosis: str, final_report: str) -> dict:
         "approved_diagnosis": approved_diagnosis,
         "final_report": final_report,
     }))
-    passed = verdict_text.strip().startswith("## Check B Verdict: PASS")
+    passed = _extract_check_verdict(verdict_text, CHECK_B_VERDICT_PATTERN, "Check B")
     return {"passed": passed, "verdict_text": verdict_text}
 
 
@@ -325,6 +366,8 @@ CHECK_C_EXPECTED_OUTPUT = (
     "report."
 )
 
+CHECK_C_VERDICT_PATTERN = re.compile(r"##\s*Check C Verdict:\s*(PASS|FAIL)", re.IGNORECASE)
+
 
 def run_check_c(approved_diagnosis: str, final_report: str) -> dict:
     task = Task(
@@ -337,7 +380,7 @@ def run_check_c(approved_diagnosis: str, final_report: str) -> dict:
         "approved_diagnosis": approved_diagnosis,
         "final_report": final_report,
     }))
-    passed = verdict_text.strip().startswith("## Check C Verdict: PASS")
+    passed = _extract_check_verdict(verdict_text, CHECK_C_VERDICT_PATTERN, "Check C")
     return {"passed": passed, "verdict_text": verdict_text}
 
 

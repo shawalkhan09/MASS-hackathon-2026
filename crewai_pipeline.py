@@ -45,6 +45,7 @@ Run:
 
 import re
 import time
+import warnings
 
 from crewai import Agent, Task, Crew
 from crewai.tools import tool
@@ -124,7 +125,7 @@ analyst = Agent(
 auditor = Agent(
     role="Quality Auditor",
     goal=(
-        "Verify the Analyst's diagnosis against two specific, checkable "
+        "Verify the Analyst's diagnosis against three specific, checkable "
         "standards derived from prior observed failure modes -- not a "
         "generic quality review."
     ),
@@ -204,6 +205,24 @@ ANALYSIS_DESCRIPTION = (
     "Margin, CAGR, Market Share): show the actual calculation using the "
     "real figures from the case's Supporting Data, not a generic "
     "example.\n\n"
+    "UNRESOLVED-CAUSE PRESERVATION: Where the case input states that a "
+    "specific cause (technical, mechanical, or otherwise) has not yet "
+    "been determined -- including phrasing such as 'still investigating,' "
+    "'no finding yet,' or an explicitly unconfirmed hypothesis -- do not "
+    "invent a specific, previously-unstated fact to resolve it. This "
+    "applies at any level of specificity, not only technical mechanisms: "
+    "a specific unstated component failure, a specific unstated process "
+    "change (e.g. 'a supplier change' or 'a bypassed sign-off' not "
+    "mentioned anywhere in the input), or a specific unstated event are "
+    "all instances of the same problem if the input does not actually "
+    "describe them. You may still reason from what the input does state "
+    "-- e.g. a rushed, unpiloted rollout is itself evidence, if the input "
+    "describes one -- the restriction is on adding a new, unstated fact "
+    "to fill the gap, not on reasoning from facts already given. Where "
+    "you cannot determine the specific mechanism from the input, say so "
+    "explicitly at the relevant step (e.g. 'the specific mechanism is "
+    "not established by the available data') rather than substituting "
+    "an invented one.\n\n"
     "Do not reproduce framework definitions -- that's already done. "
     "Your output should read like a completed analysis, not a study "
     "guide, and should end with a clear final root-cause statement that "
@@ -233,7 +252,7 @@ REVISION_DESCRIPTION = (
 AUDIT_DESCRIPTION = (
     "Case to analyze:\n{case_text}\n\n"
     "Diagnosis to review:\n\n{diagnosis_text}\n\n"
-    "Review this diagnosis against two specific checks:\n\n"
+    "Review this diagnosis against three specific checks:\n\n"
     "CHECK 1 -- Trigger vs. Root Cause: This check has two parts. Both "
     "must pass for Check 1 to pass.\n\n"
     "Part A -- Distinctness: Does the final diagnosis explicitly "
@@ -286,16 +305,50 @@ AUDIT_DESCRIPTION = (
     "List every ranking instance found, not just the first one. Every "
     "instance you list MUST have an explicit PASS or FAIL -- do not "
     "list an instance without stating its verdict.\n\n"
-    "Think through both checks completely before writing anything. Your "
-    "final answer must state your verdict once, decisively -- no "
+    "CHECK 3 -- Unresolved-Cause Fabrication Scan: This applies WHEREVER "
+    "the case input explicitly states that a specific cause -- "
+    "technical, mechanical, procedural, or otherwise -- is unknown, "
+    "unconfirmed, or still under investigation (e.g. 'still "
+    "investigating,' 'no finding yet,' an explicitly unconfirmed "
+    "hypothesis). If the case input contains no such statement, Check 3 "
+    "does NOT apply -- PASS, state 'Not applicable -- no unresolved-"
+    "cause statement in the case input.'\n\n"
+    "If such a statement IS present, scan the diagnosis's full "
+    "reasoning chain (5 Whys, Fishbone, or any other framework applied) "
+    "for any point where a specific, previously-unstated fact -- a "
+    "named component, technical mechanism, process change, or other "
+    "concrete detail that does not appear anywhere in the case input -- "
+    "is presented as the resolved explanation, without a hedge. "
+    "Reasoning that draws directly on facts already stated in the case "
+    "input is NOT a violation, even if it reaches a specific conclusion "
+    "(e.g. inferring that a rushed, unpiloted rollout described in the "
+    "input is itself a contributing factor is fine, since the input "
+    "actually describes the rollout). Introducing a new specific fact "
+    "that appears nowhere in the input, stated as settled rather than "
+    "hedged, IS a violation, regardless of how plausible it sounds.\n\n"
+    "For each point in the reasoning chain that touches the unresolved "
+    "cause:\n"
+    "  - Does it either preserve the input's stated uncertainty "
+    "explicitly (e.g. 'the specific mechanism is not established by "
+    "the available data') or reason only from facts already in the "
+    "input? -> PASS.\n"
+    "  - Does it state a specific, previously-unstated fact as the "
+    "resolved explanation, without a hedge? -> FAIL, quote it exactly.\n\n"
+    "List every such point found, not just the first one. Every "
+    "instance you list MUST have an explicit PASS or FAIL -- do not "
+    "list an instance without stating its verdict. Write 'Not "
+    "applicable' per the rule above if the case input never states a "
+    "cause is unresolved.\n\n"
+    "Think through all three checks completely before writing anything. "
+    "Your final answer must state your verdict once, decisively -- no "
     "visible self-correction, no 'wait,' no reconsidering mid-answer, "
     "no hypothetical examples of violations that aren't actually "
     "present in the text you're reviewing. If you need to reconsider "
     "your reasoning, do that before you start writing, not in the "
     "output. The overall verdict at the very top must exactly match "
-    "your Check 1 and Check 2 statuses -- FAIL if either check is "
-    "FAIL, PASS only if both are PASS -- and must not be contradicted "
-    "anywhere later in your answer.\n\n"
+    "your Check 1, Check 2, and Check 3 statuses -- FAIL if any check "
+    "is FAIL, PASS only if all three are PASS -- and must not be "
+    "contradicted anywhere later in your answer.\n\n"
     "Produce a structured verdict using this exact format:\n\n"
     "## Audit Verdict: PASS or FAIL\n\n"
     "### Check 1: Trigger vs. Root Cause Distinction\n"
@@ -307,7 +360,12 @@ AUDIT_DESCRIPTION = (
     "Instances found: <list each one, with PASS/FAIL and reasoning per "
     "instance; write 'None found' if the analysis contains no "
     "percentage/ranking claims at all>\n\n"
-    "The overall verdict is FAIL if either check fails."
+    "### Check 3: Unresolved-Cause Fabrication Scan\n"
+    "Status: PASS or FAIL\n"
+    "Instances found: <list each one, with PASS/FAIL and reasoning per "
+    "instance; write 'Not applicable' if the case input never states a "
+    "cause is unresolved>\n\n"
+    "The overall verdict is FAIL if any check fails."
 )
 
 RESEARCH_EXPECTED_OUTPUT = (
@@ -321,7 +379,7 @@ ANALYSIS_EXPECTED_OUTPUT = (
 )
 AUDIT_EXPECTED_OUTPUT = (
     "A structured audit report in the exact format specified, with an "
-    "overall PASS/FAIL verdict and itemized findings for both checks."
+    "overall PASS/FAIL verdict and itemized findings for all three checks."
 )
 
 VERDICT_PATTERN = re.compile(r"##\s*Audit Verdict:\s*(PASS|FAIL)", re.IGNORECASE)
@@ -369,11 +427,47 @@ def parse_verdict(audit_text: str) -> bool:
     rather than silently treating unparseable output as success -- an
     unparseable audit is exactly the kind of thing that should trigger a
     human looking at it, not a silent pass.
+
+    Return type is deliberately still a bare bool, not a tuple or dict --
+    every existing caller (run_pipeline() below, and every
+    test_*.py script that does `parse_verdict(audit)` or
+    `not parse_verdict(audit)`) treats the return value as a plain bool,
+    so changing the shape would silently break all of them (`not
+    {"passed": True}` is always False, for example). The single-verdict
+    case must behave byte-for-byte as before -- this only adds behavior
+    for a case that previously had none.
+
+    SELF-CORRECTION HANDLING (see DEVELOPMENT_LOG.md's harbor_vine
+    trial 3 finding): the Auditor's prompt instructs it to state its
+    verdict once, decisively, with no visible self-correction -- but a
+    real run showed the model can still write a full verdict block,
+    visibly reconsider ("Self-correction note... Correction on
+    Verdict:"), and write a second, complete, corrected verdict block
+    in the same response. The old code used .search(), which finds the
+    FIRST match -- silently keeping the model's pre-correction answer
+    even when the model itself concluded otherwise moments later. This
+    now finds ALL "## Audit Verdict: PASS/FAIL" occurrences and takes
+    the LAST one as authoritative: in the one real instance observed,
+    the model's own final, corrected conclusion was the right call,
+    so trusting the last occurrence over the first is the evidence-
+    based choice here, not a guess. When more than one occurrence is
+    found, a warning is emitted via the `warnings` module -- visible
+    to anyone running the pipeline, but silent to callers that only
+    read the return value, so no existing caller needs to change.
     """
-    match = VERDICT_PATTERN.search(audit_text)
-    if not match:
+    matches = VERDICT_PATTERN.findall(audit_text)
+    if not matches:
         return False
-    return match.group(1).upper() == "PASS"
+    if len(matches) > 1:
+        warnings.warn(
+            f"parse_verdict(): {len(matches)} '## Audit Verdict:' "
+            f"occurrences found in one response (self-correction "
+            f"pattern) -- sequence seen: {[m.upper() for m in matches]}. "
+            f"Using the LAST occurrence ({matches[-1].upper()}) as "
+            f"authoritative, matching the model's own final conclusion.",
+            stacklevel=2,
+        )
+    return matches[-1].upper() == "PASS"
 
 
 def run_pipeline(case_text: str, max_revisions: int = 1) -> dict:
