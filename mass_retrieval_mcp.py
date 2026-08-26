@@ -28,8 +28,9 @@ _QUERY_LOCK and reintroduce the crash. Always call
 Retriever config (defaults, from chroma_retriever_v2.py via
 retrieval_tool.py):
   - Collection: mass_corpus_bge
-  - Persist dir: ./chroma_db_v2 (normalized below to this file's
-    directory, so Qoder's launch cwd cannot relocate the index)
+  - Persist dir: ./chroma_db_v2_mcp (set via CHROMA_PERSIST_DIR env var,
+    separate from the pipeline's ./chroma_db_v2_pipeline to avoid
+    chromadb version conflicts)
   - Embedding model: BAAI/bge-base-en-v1.5
   - Backend: RETRIEVAL_BACKEND env var, default "bge"
     (set "tfidf" for a fast offline smoke test with no model download)
@@ -50,9 +51,14 @@ Qoder MCP config (Settings -> MCP -> My Servers -> Add):
 import contextlib
 import os
 
-# Normalize cwd so retrieval_tool's relative "./chroma_db_v2" persist dir
-# resolves to the project root regardless of the directory Qoder launches
-# this process from.
+# Use a separate persist directory for the MCP server (runs under .venv /
+# chromadb 1.5.9) so it doesn't conflict with the pipeline's index (built
+# under venv312 / chromadb 1.1.1). Must be set BEFORE the eager import-time
+# build in retrieval_tool.
+os.environ["CHROMA_PERSIST_DIR"] = "./chroma_db_v2_mcp"
+
+# Normalize cwd so retrieval_tool's relative persist dir resolves to the
+# project root regardless of the directory Qoder launches this process from.
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # The eager import-time build (corpus + embedding model + Chroma index)

@@ -34,6 +34,7 @@ different embedding dimensions (384 vs 768), so they can't share a Chroma
 collection.
 """
 
+import os
 from typing import List, Tuple
 from rag_pipeline_starter import Chunk
 
@@ -45,7 +46,7 @@ class ChromaRetrieverV2:
         self,
         chunks: List[Chunk],
         collection_name: str = "mass_corpus_bge",
-        persist_dir: str = "./chroma_db_v2",
+        persist_dir: str = os.environ.get("CHROMA_PERSIST_DIR", "./chroma_db_v2"),
         embedding_model: str = "BAAI/bge-base-en-v1.5",  # try "BAAI/bge-small-en-v1.5" for a faster download
         query_prefix: str = DEFAULT_QUERY_PREFIX,
         passage_prefix: str = "",

@@ -31,6 +31,12 @@ from rag_pipeline_starter import build_corpus, Chunk
 
 _BACKEND = os.environ.get("RETRIEVAL_BACKEND", "bge")
 
+# Pipeline entry point: default to the pipeline-specific persist directory.
+# mass_retrieval_mcp.py overrides this before importing, so setdefault
+# respects an already-set value (MCP server) while providing the pipeline
+# default when retrieval_tool is imported directly.
+os.environ.setdefault("CHROMA_PERSIST_DIR", "./chroma_db_v2_pipeline")
+
 
 def _build_retriever(corpus, backend: str):
     if backend == "tfidf":

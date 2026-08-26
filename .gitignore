@@ -4,6 +4,8 @@ venv312/
 __pycache__/
 chroma_db/
 chroma_db_v2/
+chroma_db_v2_pipeline/
+chroma_db_v2_mcp/
 .DS_Store
 .claude/
 *.pyc
