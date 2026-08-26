@@ -29,9 +29,11 @@ From `INTAKE_DESCRIPTION` and the intake agent's backstory: never add a fact, nu
 
 No other text before or after. These headers deliberately match `case_loader.py`'s `INPUT_SECTIONS` ("Problem Statement", "Background", "Supporting Data") so the output can be used the same way a real case's `diagnostic_input` is.
 
-## Open item — verify before relying on the format match
+## Format check — verified, do NOT edit the prompt to "fix" this
 
-Flagged in `intake.py`'s own docstring: this output format was written to match the project's section-header convention, NOT verified byte-for-byte against `case_loader.py`'s actual assembly logic. Anyone using this output in place of a real `case_loader.load_case(...).diagnostic_input` must confirm the two actually match first — do not assume.
+`run_intake()`'s output does NOT byte-match `case_loader.py`'s `diagnostic_input`: it omits the `# {title}` line (there's no natural title for a live user submission, unlike a curated case file) and omits the blank line `case_loader.py` inserts after each `## ` header before its body. Confirmed this has zero functional impact — `case_text`/`diagnostic_input` is never re-parsed programmatically anywhere in the pipeline (checked: no `.split("## ")` or equivalent on it downstream); it is only ever interpolated as free text into `RESEARCH_DESCRIPTION`, `ANALYSIS_DESCRIPTION`, and `AUDIT_DESCRIPTION`.
+
+**Do not edit `INTAKE_DESCRIPTION` to force byte-consistency.** Its current wording is what Phase 35's validation (15 trials, zero fabrications) actually ran against — changing the prompt, even cosmetically, invalidates that validation for a difference with no demonstrated functional cost. If a future change ever makes `case_text` subject to programmatic parsing, re-check this before relying on the format matching.
 
 ## Validation status — Phase 35 (DEVELOPMENT_LOG.md), NOT exhaustive
 
