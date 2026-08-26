@@ -49,7 +49,6 @@ Qoder MCP config (Settings -> MCP -> My Servers -> Add):
 
 import contextlib
 import os
-import sys
 
 # Normalize cwd so retrieval_tool's relative "./chroma_db_v2" persist dir
 # resolves to the project root regardless of the directory Qoder launches
@@ -57,12 +56,20 @@ import sys
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # The eager import-time build (corpus + embedding model + Chroma index)
-# can be noisy; keep stdout clean so nothing corrupts the stdio JSON-RPC
-# protocol. The MCP transport is set up later, on the real stdout.
+# is noisy on BOTH streams: the HF Hub unauthenticated-request warning
+# and tqdm's "Loading weights" bar go to stderr, other library output to
+# stdout. Qoder's MCP client surfaced that startup stderr as the failure
+# reason ("failed to initialize MCP client for mass-retrieval: Warning:
+# You are sending unauthenticated requests to the HF Hub... Loading
+# weights..."), so BOTH streams are pointed at os.devnull for the
+# duration of the import -- nothing appears on either stream until the
+# JSON-RPC protocol starts on the real stdout. This silences startup
+# noise only; it changes no retriever behavior.
 # Aliased so the MCP tool function below can keep the public tool name
 # `retrieve_knowledge` without shadowing (and infinitely recursing into)
 # the imported original.
-with contextlib.redirect_stdout(sys.stderr):
+with contextlib.redirect_stdout(open(os.devnull, "w")), \
+        contextlib.redirect_stderr(open(os.devnull, "w")):
     from retrieval_tool import retrieve_knowledge as _retrieve_knowledge
 
 from mcp.server.fastmcp import FastMCP
