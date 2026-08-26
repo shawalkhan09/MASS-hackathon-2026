@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 
 from content_data import ALL_TIERS
+from case_loader import INPUT_SECTIONS
 
 CASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cases")
 
@@ -96,6 +97,8 @@ def chunk_case_file(path: str) -> List[Chunk]:
     for i, sec in enumerate(sections[1:], start=1):  # sections[0] is the preamble/header block
         header, _, body = sec.partition("\n")
         header = header.strip()
+        if header not in INPUT_SECTIONS:
+            continue
         body = re.sub(r"\n+", " ", body).strip()
         if not body:
             continue
