@@ -4,121 +4,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MASS — Case Diagnosis</title>
+  <title>MASS — Case File</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
-    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
-      --ink: #1A1D23;
-      --paper: #F7F6F2;
-      --paper-raised: #FFFFFF;
-      --verified: #2F6F5E;
-      --verified-bg: #E9F1EE;
-      --flagged: #B8752E;
-      --flagged-bg: #FBF0E3;
-      --fidelity: #5B5A9C;
-      --fidelity-bg: #EDECF5;
-      --rule: #D8D5CC;
-      --muted: #6B6862;
+      --ink: #0B0F14;
+      --ink-2: #11161D;
+      --rule: #2A333E;
+      --rule-soft: #1B222B;
+      --text-dim: #8A93A0;
+      --text-mid: #C7CDD6;
+      --text-bright: #F2F4F7;
+
+      --paper: #FCFBF7;
+      --paper-line: #E7E3D8;
+      --paper-ink: #201B12;
+      --paper-muted: #6E6656;
+
+      --accent: #5B5FEF;
+      --accent-glow: rgba(91, 95, 239, 0.32);
+
+      --verified: #2F9E6E;
+      --verified-glow: rgba(47, 158, 110, 0.25);
+      --verified-bg: #E9F5EF;
+
+      --flagged: #C4622D;
+      --flagged-glow: rgba(196, 98, 45, 0.28);
+      --flagged-bg: #FBEFE6;
+
+      --fidelity: #B23A72;
+      --fidelity-glow: rgba(178, 58, 114, 0.25);
+      --fidelity-bg: #FAEBF1;
+
+      --danger: #C0392B;
+      --danger-bg: #FBEAE7;
+
+      --mono: 'IBM Plex Mono', monospace;
+      --serif: 'Source Serif 4', serif;
+      --sans: 'Inter', sans-serif;
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html,
     body {
       margin: 0;
-      background: var(--paper);
-      color: var(--ink);
-      font-family: 'Inter', sans-serif;
-      line-height: 1.55;
-      -webkit-font-smoothing: antialiased;
+      padding: 0;
     }
 
-    .shell {
-      max-width: 760px;
+    body {
+      background: var(--ink);
+      color: var(--text-mid);
+      font-family: var(--sans);
+      min-height: 100vh;
+      background-image:
+        radial-gradient(circle at 12% 6%, rgba(91, 95, 239, 0.06), transparent 42%),
+        radial-gradient(circle at 88% 92%, rgba(47, 158, 110, 0.04), transparent 46%);
+    }
+
+    .frame {
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 56px 24px 96px;
+      padding: 36px 28px 90px;
     }
 
+    /* ---------- MASTHEAD ---------- */
     header.masthead {
-      border-bottom: 1px solid var(--rule);
-      padding-bottom: 24px;
-      margin-bottom: 40px;
-    }
-
-    header.masthead .eyebrow {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-
-    header.masthead h1 {
-      font-family: 'Source Serif 4', serif;
-      font-weight: 600;
-      font-size: 34px;
-      margin: 0 0 8px;
-      letter-spacing: -0.01em;
-    }
-
-    header.masthead p {
-      color: var(--muted);
-      font-size: 15px;
-      margin: 0;
-      max-width: 54ch;
-    }
-
-    /* Step indicator */
-    .steps {
       display: flex;
-      gap: 0;
-      margin-bottom: 40px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
-      letter-spacing: 0.04em;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 20px;
+      margin-bottom: 34px;
+      opacity: 0;
+      animation: fade-up 0.5s ease forwards;
     }
 
-    .steps .step {
-      flex: 1;
-      padding: 10px 0;
-      text-align: center;
-      color: var(--muted);
-      border-bottom: 2px solid var(--rule);
-      text-transform: uppercase;
-      transition: color 0.2s, border-color 0.2s;
-    }
-
-    .steps .step.active {
-      color: var(--ink);
-      border-color: var(--ink);
-      font-weight: 600;
-    }
-
-    .steps .step.done {
-      color: var(--verified);
-      border-color: var(--verified);
-    }
-
-    section.panel {
-      display: none;
-    }
-
-    section.panel.visible {
-      display: block;
-      animation: rise 0.35s ease;
-    }
-
-    @keyframes rise {
+    @keyframes fade-up {
       from {
         opacity: 0;
-        transform: translateY(6px);
+        transform: translateY(8px);
       }
 
       to {
@@ -127,200 +98,513 @@
       }
     }
 
+    .brand-eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-eyebrow .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .brand-title {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 28px;
+      color: var(--text-bright);
+      letter-spacing: -0.01em;
+      margin: 0 0 6px;
+      max-width: 26ch;
+    }
+
+    .brand-sub {
+      font-size: 14px;
+      color: var(--text-dim);
+      max-width: 56ch;
+      margin: 0;
+    }
+
+    .case-no {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: right;
+      line-height: 1.7;
+      white-space: nowrap;
+      padding-left: 20px;
+    }
+
+    .case-no b {
+      color: var(--text-mid);
+      font-weight: 500;
+    }
+
+    /* ---------- LAYOUT ---------- */
+    .layout {
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      gap: 36px;
+    }
+
+    @media (max-width:860px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ---------- LEDGER ---------- */
+    .ledger {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      opacity: 0;
+      animation: fade-up 0.5s ease 0.08s forwards;
+    }
+
+    .ledger-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--rule-soft);
+    }
+
+    .entry {
+      position: relative;
+      padding: 11px 0 11px 26px;
+      border-left: 1px solid var(--rule);
+      opacity: 0.32;
+      transition: opacity 0.4s ease;
+    }
+
+    .entry:last-child {
+      border-left: 1px solid transparent;
+    }
+
+    .entry.done,
+    .entry.active,
+    .entry.flagged,
+    .entry.skipped {
+      opacity: 1;
+    }
+
+    .entry.skipped {
+      opacity: 0.5;
+    }
+
+    .entry-dot {
+      position: absolute;
+      left: -5px;
+      top: 15px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--rule);
+      border: 2px solid var(--ink);
+      transition: all 0.3s ease;
+    }
+
+    .entry.done .entry-dot {
+      background: var(--verified);
+      box-shadow: 0 0 0 3px var(--verified-glow);
+    }
+
+    .entry.active .entry-dot {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+      animation: pulse-dot 1.3s ease-in-out infinite;
+    }
+
+    .entry.flagged .entry-dot {
+      background: var(--flagged);
+      box-shadow: 0 0 0 3px var(--flagged-glow);
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.3);
+      }
+    }
+
+    .entry-name {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-mid);
+    }
+
+    .entry.done .entry-name,
+    .entry.active .entry-name,
+    .entry.flagged .entry-name {
+      color: var(--text-bright);
+    }
+
+    .entry-status {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 3px;
+      letter-spacing: 0.02em;
+    }
+
+    .entry.done .entry-status {
+      color: var(--verified);
+    }
+
+    .entry.flagged .entry-status {
+      color: var(--flagged);
+    }
+
+    .entry-stamp {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.07em;
+      padding: 1px 6px;
+      border-radius: 2px;
+      margin-top: 5px;
+      opacity: 0;
+      transform: scale(1.6) rotate(-6deg);
+    }
+
+    .entry.done .entry-stamp {
+      opacity: 1;
+      color: var(--verified);
+      border: 1px solid var(--verified);
+      animation: stamp-in 0.4s cubic-bezier(.2, 1.4, .4, 1) forwards;
+    }
+
+    .entry.flagged .entry-stamp {
+      opacity: 1;
+      color: var(--flagged);
+      border: 1px solid var(--flagged);
+      animation: stamp-in 0.4s cubic-bezier(.2, 1.4, .4, 1) forwards;
+    }
+
+    @keyframes stamp-in {
+      0% {
+        opacity: 0;
+        transform: scale(2) rotate(-12deg);
+      }
+
+      60% {
+        opacity: 1;
+        transform: scale(0.92) rotate(-4deg);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(-4deg);
+      }
+    }
+
+    /* ---------- MAIN PANE ---------- */
+    main.stage {
+      min-height: 480px;
+      opacity: 0;
+      animation: fade-up 0.5s ease 0.14s forwards;
+    }
+
+    section.panel {
+      display: none;
+    }
+
+    section.panel.visible {
+      display: block;
+      animation: rise 0.4s cubic-bezier(.2, .9, .3, 1);
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .canvas {
+      background: var(--ink-2);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 30px;
+    }
+
     label.field-label {
       display: block;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 8px;
+      color: var(--text-dim);
+      margin-bottom: 9px;
     }
 
     textarea,
     input[type="text"] {
       width: 100%;
-      background: var(--paper-raised);
-      border: 1px solid var(--rule);
-      border-radius: 3px;
+      background: var(--ink);
+      border: 1.5px solid var(--rule);
+      border-radius: 5px;
       padding: 14px 16px;
-      font-family: 'Inter', sans-serif;
+      font-family: var(--sans);
       font-size: 15px;
-      color: var(--ink);
+      color: var(--text-bright);
       resize: vertical;
       line-height: 1.6;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     textarea:focus,
     input:focus {
-      outline: 2px solid var(--ink);
-      outline-offset: 1px;
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
     }
 
     .field-block {
-      margin-bottom: 24px;
+      margin-bottom: 22px;
     }
 
     .field-hint {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 6px;
+      font-size: 12.5px;
+      color: var(--text-dim);
+      margin-top: 7px;
+    }
+
+    button {
+      font-family: var(--sans);
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
 
     button.primary {
-      background: var(--ink);
-      color: var(--paper);
-      border: none;
-      border-radius: 3px;
-      padding: 13px 24px;
-      font-family: 'Inter', sans-serif;
-      font-size: 15px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      padding: 12.5px 21px;
+      font-size: 14.5px;
       font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 18px var(--accent-glow);
+      transition: transform 0.15s cubic-bezier(.3, 1.5, .5, 1), box-shadow 0.2s ease, filter 0.2s ease;
+    }
+
+    button.primary .arrow {
+      transition: transform 0.2s cubic-bezier(.3, 1.5, .5, 1);
     }
 
     button.primary:hover {
-      opacity: 0.85;
+      filter: brightness(1.12);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 10px 26px var(--accent-glow);
+      transform: translateY(-2px);
+    }
+
+    button.primary:hover .arrow {
+      transform: translateX(3px);
+    }
+
+    button.primary:active {
+      transform: translateY(0) scale(0.98);
     }
 
     button.primary:disabled {
-      opacity: 0.4;
+      opacity: 0.45;
       cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     button.ghost {
       background: transparent;
-      border: 1px solid var(--rule);
-      color: var(--muted);
-      border-radius: 3px;
-      padding: 12px 22px;
-      font-family: 'Inter', sans-serif;
-      font-size: 14px;
-      cursor: pointer;
-      margin-right: 2px;
-      margin-left: 12px;
+      border: 1.5px solid var(--rule);
+      color: var(--text-dim);
+      border-radius: 6px;
+      padding: 11px 19px;
+      font-size: 13.5px;
+      font-weight: 500;
+      margin-right: 4px;
+      margin-left: 10px;
+      transition: all 0.18s ease;
     }
 
     button.ghost:hover {
-      border-color: var(--ink);
-      color: var(--ink);
+      border-color: var(--text-mid);
+      color: var(--text-bright);
+      background: var(--rule-soft);
     }
 
     .action-row {
       display: flex;
       align-items: center;
-      margin-top: 28px;
+      margin-top: 26px;
     }
 
-    /* Loading state */
-    .loading-block {
-      padding: 40px 0;
-      text-align: center;
+    /* ---------- LOADING ---------- */
+    .processing-block {
+      padding: 30px 4px 10px;
     }
 
-    .loading-stage {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 13px;
-      letter-spacing: 0.04em;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-
-    .loading-dots span {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--ink);
-      margin: 20px 4px 0;
-      animation: pulse 1.2s infinite ease-in-out;
-    }
-
-    .loading-dots span:nth-child(2) {
-      animation-delay: 0.15s;
-    }
-
-    .loading-dots span:nth-child(3) {
-      animation-delay: 0.3s;
-    }
-
-    @keyframes pulse {
-
-      0%,
-      80%,
-      100% {
-        opacity: 0.25;
-        transform: scale(0.85);
-      }
-
-      40% {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    /* Verdict stamp */
-    .stamp-row {
+    .processing-label {
+      font-family: var(--mono);
+      font-size: 13.5px;
+      color: var(--text-bright);
       display: flex;
       align-items: center;
-      gap: 14px;
-      margin-bottom: 28px;
+      gap: 10px;
+      margin-bottom: 8px;
     }
 
-    .stamp {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+    .blink {
+      animation: blink 1.1s steps(2) infinite;
+      color: var(--accent);
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0.15;
+      }
+    }
+
+    .processing-sub {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* ---------- RESULT DOCUMENT ---------- */
+    .doc-wrap {
+      position: relative;
+    }
+
+    .doc {
+      background: var(--paper);
+      color: var(--paper-ink);
+      border-radius: 6px;
+      padding: 38px 40px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .doc-eyebrow {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
+      color: var(--paper-muted);
+      margin-bottom: 6px;
+    }
+
+    .verdict-stamp {
+      position: absolute;
+      top: 30px;
+      right: 6px;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 0.02em;
       padding: 8px 14px;
-      border-radius: 3px;
-      border: 1.5px solid;
-      transform: rotate(-1.5deg);
-      display: inline-block;
-    }
-
-    .stamp.verified {
-      color: var(--verified);
-      border-color: var(--verified);
-      background: var(--verified-bg);
-    }
-
-    .stamp.flagged {
+      border: 3px double var(--flagged);
       color: var(--flagged);
-      border-color: var(--flagged);
-      background: var(--flagged-bg);
+      transform: rotate(-8deg) scale(0.6);
+      opacity: 0;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.2;
+      pointer-events: none;
+      mix-blend-mode: multiply;
+      z-index: 2;
     }
 
-    .stamp.fidelity {
-      color: var(--fidelity);
+    .verdict-stamp.verified {
+      border-color: var(--verified);
+      color: var(--verified);
+    }
+
+    .verdict-stamp.fidelity {
       border-color: var(--fidelity);
-      background: var(--fidelity-bg);
+      color: var(--fidelity);
+    }
+
+    .verdict-stamp.show {
+      animation: stamp-slam 0.5s cubic-bezier(.15, 1.6, .4, 1) 0.3s forwards;
+    }
+
+    @keyframes stamp-slam {
+      0% {
+        opacity: 0;
+        transform: rotate(-8deg) scale(2.2);
+      }
+
+      55% {
+        opacity: 1;
+        transform: rotate(-8deg) scale(0.9);
+      }
+
+      100% {
+        opacity: 1;
+        transform: rotate(-8deg) scale(1);
+      }
     }
 
     .attempts-note {
-      font-size: 13px;
-      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--paper-muted);
+      margin-bottom: 18px;
     }
 
     .reasons-box {
       background: var(--flagged-bg);
-      border: 1px solid var(--flagged);
-      border-radius: 4px;
-      padding: 18px 20px;
-      margin-bottom: 28px;
+      border-left: 4px solid var(--flagged);
+      border-radius: 0 6px 6px 0;
+      padding: 16px 18px;
+      margin-bottom: 22px;
+    }
+
+    .reasons-box.fidelity {
+      background: var(--fidelity-bg);
+      border-color: var(--fidelity);
     }
 
     .reasons-box .reasons-title {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
+      font-family: var(--mono);
+      font-size: 11.5px;
       font-weight: 600;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
       color: var(--flagged);
-      margin-bottom: 10px;
+      margin-bottom: 9px;
+    }
+
+    .reasons-box.fidelity .reasons-title {
+      color: var(--fidelity);
     }
 
     .reasons-box ul {
@@ -330,53 +614,45 @@
 
     .reasons-box li {
       margin-bottom: 6px;
-      font-size: 14.5px;
-    }
-
-    .report-body {
-      background: var(--paper-raised);
-      border: 1px solid var(--rule);
-      border-radius: 4px;
-      padding: 32px;
-      font-size: 15.5px;
-      line-height: 1.7;
-    }
-
-    .report-body h1,
-    .report-body h2,
-    .report-body h3 {
-      font-family: 'Source Serif 4', serif;
-      font-weight: 600;
-      margin: 24px 0 10px;
-      color: var(--ink);
-    }
-
-    .report-body h1:first-child,
-    .report-body h2:first-child,
-    .report-body h3:first-child {
-      margin-top: 0;
+      font-size: 14px;
+      color: var(--paper-ink);
     }
 
     .report-body h1 {
+      font-family: var(--serif);
       font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 18px;
+      color: var(--paper-ink);
+      border-bottom: 1px solid var(--paper-line);
+      padding-bottom: 14px;
     }
 
-    .report-body h2 {
-      font-size: 19px;
-    }
-
+    .report-body h2,
     .report-body h3 {
-      font-size: 16px;
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 13.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 22px 0 8px;
+      color: #4A4433;
     }
 
     .report-body p {
-      margin: 0 0 14px;
+      font-family: var(--serif);
+      font-size: 15px;
+      line-height: 1.65;
+      margin: 0 0 12px;
     }
 
     .report-body ul,
     .report-body ol {
       margin: 0 0 14px;
       padding-left: 22px;
+      font-family: var(--serif);
+      font-size: 15px;
+      line-height: 1.6;
     }
 
     .report-body li {
@@ -391,64 +667,58 @@
       border-collapse: collapse;
       width: 100%;
       margin: 0 0 16px;
-      font-size: 14.5px;
+      font-size: 14px;
+      font-family: var(--sans);
     }
 
     .report-body th,
     .report-body td {
-      border: 1px solid var(--rule);
+      border: 1px solid var(--paper-line);
       padding: 8px 10px;
       text-align: left;
     }
 
     .report-body th {
-      background: var(--paper);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
+      background: var(--paper-line);
+      font-family: var(--mono);
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
     }
 
     .draft-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
+      font-family: var(--mono);
+      font-size: 11.5px;
       font-weight: 600;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
-      color: var(--muted);
-      margin: 28px 0 10px;
+      color: var(--paper-muted);
+      margin: 24px 0 10px;
     }
 
     .error-box {
-      background: #FBEAE7;
-      border: 1px solid #C24A3B;
+      background: var(--danger-bg);
+      border-left: 4px solid var(--danger);
       color: #8B3225;
-      border-radius: 4px;
-      padding: 16px 18px;
+      border-radius: 0 6px 6px 0;
+      padding: 14px 18px;
       font-size: 14px;
       margin-bottom: 20px;
     }
 
     footer.disclaimer {
-      margin-top: 56px;
+      margin-top: 48px;
       padding-top: 20px;
       border-top: 1px solid var(--rule);
-      font-size: 12.5px;
-      color: var(--muted);
+      font-size: 12px;
+      color: var(--text-dim);
       line-height: 1.6;
+      grid-column: 1 / -1;
     }
 
-    /* Print / "Download PDF" -- reuses the already-rendered report DOM
-       rather than a second server-side renderer. Hides everything that
-       isn't the actual diagnosis content: masthead, step indicator,
-       error slot, every action button (including Download itself), and
-       the disclaimer footer. Left visible: the verdict stamp, the
-       reasons box (if flagged), and the report/draft body -- i.e.
-       everything a reader would want on the printed page. */
     @media print {
 
       header.masthead,
-      .steps,
+      .ledger,
       #error-slot,
       .action-row,
       footer.disclaimer {
@@ -456,112 +726,177 @@
       }
 
       body {
-        background: #FFFFFF;
+        background: #fff;
       }
 
-      .shell {
+      .frame {
         max-width: none;
         padding: 0;
       }
 
-      .report-body {
-        border: none;
-        padding: 0;
+      .layout {
+        display: block;
+      }
+
+      .doc {
+        box-shadow: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="shell">
+  <div class="frame">
 
     <header class="masthead">
-      <div class="eyebrow">MASS — Multi-Agent Analysis &amp; Synthesis</div>
-      <h1>Describe a problem. Get an audited diagnosis.</h1>
-      <p>Every finding below is checked before you see it — and if something couldn't be verified, you'll see exactly
-        why, not a polished answer standing in for one.</p>
+      <div>
+        <div class="brand-eyebrow"><span class="dot"></span>Multi-Agent Analysis &amp; Synthesis</div>
+        <h1 class="brand-title">Describe a problem. Get an audited diagnosis.</h1>
+        <p class="brand-sub">Every finding is checked before you see it — if something couldn't be verified,
+          you'll see exactly why, not a polished answer standing in for one.</p>
+      </div>
+      <div class="case-no">
+        CASE NO. <b id="caseNo">2026-0027</b><br>
+        STATUS: <b id="headerStatus">AWAITING INTAKE</b>
+      </div>
     </header>
 
-    <div class="steps">
-      <div class="step active" id="step-indicator-1">1 · Describe</div>
-      <div class="step" id="step-indicator-2">2 · Review</div>
-      <div class="step" id="step-indicator-3">3 · Diagnosis</div>
+    <div class="layout">
+
+      <!-- LEDGER -->
+      <aside class="ledger">
+        <div class="ledger-title">Chain of Custody</div>
+        <div id="entries">
+          <div class="entry active" data-stage="describe">
+            <div class="entry-dot"></div>
+            <div class="entry-name">Describe</div>
+            <div class="entry-status">awaiting input</div>
+          </div>
+          <div class="entry" data-stage="review">
+            <div class="entry-dot"></div>
+            <div class="entry-name">Review</div>
+            <div class="entry-status">not started</div>
+          </div>
+          <div class="entry" data-stage="researcher">
+            <div class="entry-dot"></div>
+            <div class="entry-name">Researcher</div>
+            <div class="entry-status">not started</div>
+          </div>
+          <div class="entry" data-stage="analyst">
+            <div class="entry-dot"></div>
+            <div class="entry-name">Analyst</div>
+            <div class="entry-status">not started</div>
+          </div>
+          <div class="entry" data-stage="auditor">
+            <div class="entry-dot"></div>
+            <div class="entry-name">Auditor · 3 checks</div>
+            <div class="entry-status">not started</div>
+          </div>
+          <div class="entry" data-stage="orchestrator">
+            <div class="entry-dot"></div>
+            <div class="entry-name">Orchestrator</div>
+            <div class="entry-status">not started</div>
+          </div>
+          <div class="entry" data-stage="fidelity">
+            <div class="entry-dot"></div>
+            <div class="entry-name">Fidelity Review · A/B/C</div>
+            <div class="entry-status">not started</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="stage">
+
+        <div id="error-slot"></div>
+
+        <!-- STEP 1 -->
+        <section class="panel visible" id="panel-1">
+          <div class="canvas">
+            <div class="field-block">
+              <label class="field-label" for="raw-input">What's going on?</label>
+              <textarea id="raw-input" rows="8"
+                placeholder="Describe the situation in your own words — what happened, what led up to it, and any numbers or data you have. Don't worry about organizing it."></textarea>
+              <div class="field-hint">Write it the way you'd explain it to a colleague. The next step will organize
+                it for you to check.</div>
+            </div>
+            <div class="action-row">
+              <button class="primary" id="btn-structure">Open Case File <span class="arrow">→</span></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 2 -->
+        <section class="panel" id="panel-2">
+          <div class="canvas">
+            <div class="field-block">
+              <label class="field-label" for="edit-problem">Problem Statement</label>
+              <textarea id="edit-problem" rows="4"></textarea>
+            </div>
+            <div class="field-block">
+              <label class="field-label" for="edit-background">Background</label>
+              <textarea id="edit-background" rows="5"></textarea>
+            </div>
+            <div class="field-block">
+              <label class="field-label" for="edit-data">Supporting Data</label>
+              <textarea id="edit-data" rows="4"></textarea>
+              <div class="field-hint">If this looks thin, that's expected when you didn't give exact figures — don't
+                add numbers here that you're not actually sure of.</div>
+            </div>
+            <div class="action-row">
+              <button class="ghost" id="btn-back-to-1">Back</button>
+              <button class="primary" id="btn-diagnose">Confirm &amp; Diagnose <span class="arrow">→</span></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- LOADING -->
+        <section class="panel" id="panel-loading">
+          <div class="canvas">
+            <div class="processing-block">
+              <div class="processing-label"><span class="blink">●</span> <span id="loading-stage-label">Researching
+                  applicable frameworks</span></div>
+              <div class="processing-sub">Watch the chain of custody at left — this runs several real model calls
+                and can take a few minutes.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RESULT -->
+        <section class="panel" id="panel-3">
+          <div class="doc-wrap">
+            <div class="doc" id="docCard">
+              <div class="verdict-stamp" id="verdictStamp">ON HOLD<br>REVIEW</div>
+              <div class="doc-eyebrow">Case <span id="docCaseNo">2026-0027</span> · <span id="docStatusLine">Draft
+                  synthesis</span></div>
+              <div class="attempts-note" id="attempts-note"></div>
+              <div id="reasons-slot"></div>
+              <div id="report-slot" class="report-body"></div>
+            </div>
+            <div class="action-row">
+              <button class="primary" id="btn-retry" style="display:none;">Try Again <span class="arrow">↻</span></button>
+              <button class="ghost" id="btn-download" style="display:none;">Download Report (PDF)</button>
+              <button class="ghost" id="btn-restart">Start a New Diagnosis</button>
+            </div>
+          </div>
+        </section>
+
+      </main>
     </div>
 
-    <div id="error-slot"></div>
-
-    <!-- STEP 1: raw description -->
-    <section class="panel visible" id="panel-1">
-      <div class="field-block">
-        <label class="field-label" for="raw-input">What's going on?</label>
-        <textarea id="raw-input" rows="8"
-          placeholder="Describe the situation in your own words — what happened, what led up to it, and any numbers or data you have. Don't worry about organizing it."></textarea>
-        <div class="field-hint">Write it the way you'd explain it to a colleague. The next step will organize it for you
-          to check.</div>
-      </div>
-      <div class="action-row">
-        <button class="primary" id="btn-structure">Organize My Problem</button>
-      </div>
-    </section>
-
-    <!-- STEP 2: structured confirmation -->
-    <section class="panel" id="panel-2">
-      <div class="field-block">
-        <label class="field-label" for="edit-problem">Problem Statement</label>
-        <textarea id="edit-problem" rows="4"></textarea>
-      </div>
-      <div class="field-block">
-        <label class="field-label" for="edit-background">Background</label>
-        <textarea id="edit-background" rows="5"></textarea>
-      </div>
-      <div class="field-block">
-        <label class="field-label" for="edit-data">Supporting Data</label>
-        <textarea id="edit-data" rows="4"></textarea>
-        <div class="field-hint">If this looks thin, that's expected when you didn't give exact figures — don't add
-          numbers here that you're not actually sure of.</div>
-      </div>
-      <div class="action-row">
-        <button class="ghost" id="btn-back-to-1">Back</button>
-        <button class="primary" id="btn-diagnose">Looks Right — Analyze It</button>
-      </div>
-    </section>
-
-    <!-- STEP 3: loading -->
-    <section class="panel" id="panel-loading">
-      <div class="loading-block">
-        <div class="loading-stage" id="loading-stage-label">Researching applicable frameworks</div>
-        <div class="loading-dots"><span></span><span></span><span></span></div>
-      </div>
-    </section>
-
-    <!-- STEP 3: result -->
-    <section class="panel" id="panel-3">
-      <div class="stamp-row">
-        <span class="stamp verified" id="stamp-verified" style="display:none;">✓ Verified</span>
-        <span class="stamp flagged" id="stamp-flagged" style="display:none;">⚑ Flagged for Review</span>
-        <span class="stamp fidelity" id="stamp-fidelity" style="display:none;">◐ Write-Up Flagged</span>
-        <span class="attempts-note" id="attempts-note"></span>
-      </div>
-
-      <div id="reasons-slot"></div>
-
-      <div id="report-slot"></div>
-
-      <div class="action-row">
-        <button class="primary" id="btn-retry" style="display:none;">Try Again</button>
-        <button class="ghost" id="btn-download" style="display:none;">Download Report (PDF)</button>
-        <button class="ghost" id="btn-restart">Start a New Diagnosis</button>
-      </div>
-    </section>
-
     <footer class="disclaimer">
-      Prototype for demonstration and testing. The intake step that organizes your description into a structured problem
-      is new and not yet independently validated the same way the rest of this system has been — it's designed to never
-      invent facts you didn't provide, and you're checking its work in Step 2 before anything runs on it. A "Flagged for
-      Review" result means the system's own audit stage couldn't fully verify part of the analysis — that's the system
-      correctly declining to present something it isn't confident in, not a bug.
+      Prototype for demonstration and testing. The intake step that organizes your description into a structured
+      problem is designed to never invent facts you didn't provide — you're checking its work in Step 2 before
+      anything runs on it. Ledger entries marked "not run" reflect the real system: the Orchestrator makes zero
+      model calls if the Auditor never passes, so nothing downstream executes on an unverified diagnosis.
     </footer>
-
   </div>
 
   <script>
@@ -584,30 +919,37 @@
         loading: document.getElementById('panel-loading'),
         3: document.getElementById('panel-3'),
       },
-      indicators: {
-        1: document.getElementById('step-indicator-1'),
-        2: document.getElementById('step-indicator-2'),
-        3: document.getElementById('step-indicator-3'),
-      },
       errorSlot: document.getElementById('error-slot'),
       loadingStageLabel: document.getElementById('loading-stage-label'),
-      stampVerified: document.getElementById('stamp-verified'),
-      stampFlagged: document.getElementById('stamp-flagged'),
-      stampFidelityFailure: document.getElementById('stamp-fidelity'),
+      headerStatus: document.getElementById('headerStatus'),
+      docStatusLine: document.getElementById('docStatusLine'),
+      verdictStamp: document.getElementById('verdictStamp'),
+      docCard: document.getElementById('docCard'),
       attemptsNote: document.getElementById('attempts-note'),
       reasonsSlot: document.getElementById('reasons-slot'),
       reportSlot: document.getElementById('report-slot'),
     };
 
+    function entry(stage) {
+      return document.querySelector(`.entry[data-stage="${stage}"]`);
+    }
+
+    function setEntry(stage, cls, statusText, stampText) {
+      const el = entry(stage);
+      el.className = 'entry ' + cls;
+      el.querySelector('.entry-status').textContent = statusText;
+      const existing = el.querySelector('.entry-stamp');
+      if (existing) existing.remove();
+      if (stampText) {
+        const s = document.createElement('div');
+        s.className = 'entry-stamp';
+        s.textContent = stampText;
+        el.appendChild(s);
+      }
+    }
+
     // --- Persistence -----------------------------------------------------
-    // Plain static page, no backend session -- all state lives only in JS
-    // variables in this one tab. A background reload (e.g. the browser
-    // discarding an inactive tab to save memory) wipes it entirely with no
-    // warning, landing back on a blank first-visit screen. sessionStorage
-    // fixes this: survives reload/tab-switching for as long as the tab
-    // stays open, clears on actual tab close (unlike localStorage, which
-    // would keep old completed diagnoses around indefinitely).
-    const STORAGE_KEY = 'mass-demo-state-v1';
+    const STORAGE_KEY = 'mass-demo-state-v2';
     let currentPanelName = 1;
     let lastResultData = null;
 
@@ -620,13 +962,7 @@
         editData: els.editData.value,
         resultData: lastResultData,
       };
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) {
-        // sessionStorage can fail (private browsing, quota, disabled) --
-        // losing persistence is no worse than the original bug, so fail
-        // silently rather than breaking the app over a nice-to-have.
-      }
+      try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { }
     }
 
     function restoreState() {
@@ -635,9 +971,7 @@
         const raw = sessionStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         saved = JSON.parse(raw);
-      } catch (e) {
-        return; // corrupted/inaccessible storage -- just start fresh
-      }
+      } catch (e) { return; }
 
       els.rawInput.value = saved.rawInput || '';
       els.editProblem.value = saved.editProblem || '';
@@ -645,28 +979,17 @@
       els.editData.value = saved.editData || '';
 
       if (saved.panel === 'loading') {
-        // A diagnosis was in flight when the tab was reloaded/backgrounded.
-        // That request is gone -- the fetch and its Promise chain don't
-        // survive a reload. There's nothing to resume, so land on the
-        // structured-input step with an explicit notice rather than
-        // stranding the user on a loading screen that will never resolve.
         showPanel(2);
-        setStepIndicator(2);
-        showError("Your previous diagnosis was interrupted (the tab was reloaded or backgrounded mid-request). Your structured input below is unchanged — press “Looks Right — Analyze It” to try again.");
+        showError("Your previous diagnosis was interrupted (the tab was reloaded or backgrounded mid-request). Your structured input below is unchanged — press “Confirm & Diagnose” to try again.");
         return;
       }
-
       if (saved.panel === 3 && saved.resultData) {
         lastResultData = saved.resultData;
         renderResult(saved.resultData);
         showPanel(3);
-        setStepIndicator(3);
         return;
       }
-
-      const panel = saved.panel || 1;
-      showPanel(panel);
-      setStepIndicator(panel);
+      showPanel(saved.panel || 1);
     }
 
     function showPanel(name) {
@@ -676,24 +999,9 @@
       saveState();
     }
 
-    function setStepIndicator(step) {
-      [1, 2, 3].forEach(n => {
-        els.indicators[n].classList.remove('active', 'done');
-        if (n < step) els.indicators[n].classList.add('done');
-        if (n === step) els.indicators[n].classList.add('active');
-      });
-    }
+    function showError(message) { els.errorSlot.innerHTML = `<div class="error-box">${message}</div>`; }
+    function clearError() { els.errorSlot.innerHTML = ''; }
 
-    function showError(message) {
-      els.errorSlot.innerHTML = `<div class="error-box">${message}</div>`;
-    }
-
-    function clearError() {
-      els.errorSlot.innerHTML = '';
-    }
-
-    // Splits the "## Problem Statement\n...\n\n## Background\n...\n\n## Supporting Data\n..."
-    // format (matches intake.py's INTAKE_DESCRIPTION output contract) into three parts.
     function splitStructured(text) {
       const problem = text.match(/## Problem Statement\s*\n([\s\S]*?)(?=\n## Background|$)/i);
       const background = text.match(/## Background\s*\n([\s\S]*?)(?=\n## Supporting Data|$)/i);
@@ -711,44 +1019,105 @@
         `## Supporting Data\n${els.editData.value.trim()}`;
     }
 
-    const loadingStages = [
-      "Researching applicable frameworks",
-      "Applying frameworks to your case",
-      "Auditing the analysis",
-      "Preparing your report",
-    ];
-    let loadingInterval = null;
+    // --- Real progress: polls /diagnose/status/{job_id}, which reflects
+    // actual backend state via progress_cb (added to run_pipeline/
+    // run_orchestrator this session). No timers, no guessed durations --
+    // every ledger transition below is driven by a real poll response.
+    const STAGE_ORDER = ['researcher', 'analyst', 'auditor', 'orchestrator', 'fidelity'];
+    const STAGE_LABELS = {
+      queued: 'Queued…',
+      starting: 'Starting diagnosis…',
+      researcher: 'Researching applicable frameworks',
+      analyst: 'Applying frameworks to your case',
+      auditor: 'Auditing the analysis',
+      orchestrator: 'Synthesizing the report',
+      fidelity: 'Verifying the report against the diagnosis',
+    };
 
-    function startLoadingAnimation() {
-      let i = 0;
-      els.loadingStageLabel.textContent = loadingStages[0];
-      loadingInterval = setInterval(() => {
-        i = (i + 1) % loadingStages.length;
-        els.loadingStageLabel.textContent = loadingStages[i];
-      }, 3500);
+    let pollTimer = null;
+    let jobStartTime = null;
+
+    function formatElapsed(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
-    function stopLoadingAnimation() {
-      if (loadingInterval) clearInterval(loadingInterval);
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     }
 
-    [els.rawInput, els.editProblem, els.editBackground, els.editData].forEach(ta => {
-      ta.addEventListener('input', saveState);
-    });
+    // Fully declarative on every call, not incremental: stages before the
+    // real current stage are 'done', the current one is 'active' (labeled
+    // with its real attempt number when > 1, i.e. an actual revision loop
+    // -- not a simulated one), everything after is reset to 'not started'.
+    // Resetting forward AND backward is what makes a genuine revision loop
+    // (auditor fails -> back to analyst for real) render correctly instead
+    // of leaving a stale 'active' stamp behind on the stage it left.
+    function applyLiveStage(stage, attempt) {
+      const idx = STAGE_ORDER.indexOf(stage);
+      STAGE_ORDER.forEach((key, i) => {
+        if (idx === -1) { setEntry(key, '', 'not started', null); return; }
+        if (i < idx) setEntry(key, 'done', 'complete', 'FILED');
+        else if (i === idx) {
+          const label = (attempt && attempt > 1) ? `in progress… (revision ${attempt})` : 'in progress…';
+          setEntry(key, 'active', label, null);
+        } else {
+          setEntry(key, '', 'not started', null);
+        }
+      });
+      const base = STAGE_LABELS[stage] || stage;
+      els.loadingStageLabel.textContent = (attempt && attempt > 1) ? `${base} — revision ${attempt}` : base;
+    }
+
+    async function pollJob(jobId) {
+      let job;
+      try {
+        const res = await fetch(`${API_BASE}/diagnose/status/${jobId}`);
+        if (res.status === 404) {
+          stopPolling();
+          showPanel(2);
+          showError('Lost track of this diagnosis (unknown job). Please try again.');
+          return;
+        }
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        job = await res.json();
+      } catch (err) {
+        stopPolling();
+        showPanel(2);
+        showError(`Lost connection while checking progress: ${err.message}.`);
+        return;
+      }
+
+      document.querySelector('.processing-sub').textContent =
+        `Real model calls can take a few minutes — running ${formatElapsed(Date.now() - jobStartTime)}.`;
+
+      if (job.status === 'running') {
+        applyLiveStage(job.stage, job.attempt);
+      } else if (job.status === 'complete') {
+        stopPolling();
+        finalizeLedger(job.result);
+        renderResult(job.result);
+        showPanel(3);
+      } else if (job.status === 'error') {
+        stopPolling();
+        showPanel(2);
+        showError(`The diagnosis failed: ${escapeHtml(job.error || 'unknown error')}. You can try again.`);
+      }
+    }
+
+    [els.rawInput, els.editProblem, els.editBackground, els.editData].forEach(ta => ta.addEventListener('input', saveState));
 
     els.btnStructure.addEventListener('click', async () => {
       clearError();
       const raw = els.rawInput.value.trim();
-      if (!raw) {
-        showError("Describe the problem before continuing.");
-        return;
-      }
+      if (!raw) { showError("Describe the problem before continuing."); return; }
       els.btnStructure.disabled = true;
-      els.btnStructure.textContent = "Organizing…";
+      els.btnStructure.innerHTML = "Organizing…";
       try {
         const res = await fetch(`${API_BASE}/structure`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ raw_input: raw }),
         });
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
@@ -757,121 +1126,123 @@
         els.editProblem.value = parts.problem;
         els.editBackground.value = parts.background;
         els.editData.value = parts.data;
+        setEntry('describe', 'done', 'complete', 'FILED');
+        setEntry('review', 'active', 'reviewing…', null);
+        els.headerStatus.textContent = 'IN REVIEW';
         showPanel(2);
-        setStepIndicator(2);
       } catch (err) {
         showError(`Couldn't organize your description: ${err.message}. Confirm the API is running at ${API_BASE}.`);
       } finally {
         els.btnStructure.disabled = false;
-        els.btnStructure.textContent = "Organize My Problem";
+        els.btnStructure.innerHTML = 'Open Case File <span class="arrow">→</span>';
       }
     });
 
     els.btnBackTo1.addEventListener('click', () => {
       clearError();
+      setEntry('describe', 'active', 'awaiting input', null);
+      setEntry('review', '', 'not started', null);
+      els.headerStatus.textContent = 'AWAITING INTAKE';
       showPanel(1);
-      setStepIndicator(1);
     });
 
-    // Shared by both the original "Analyze It" button and the "Try Again"
-    // button on a flagged result -- both cases resubmit whatever is
-    // currently in the Step 2 fields (reassembleStructured() always reads
-    // the live textarea values, not a cached copy), so a retry uses
-    // exactly the same input, not a stale snapshot from the first attempt.
     async function runDiagnosis() {
       clearError();
       const structured = reassembleStructured();
+      setEntry('review', 'done', 'complete', 'FILED');
+      els.headerStatus.textContent = 'IN PROGRESS';
       showPanel('loading');
-      startLoadingAnimation();
+
+      STAGE_ORDER.forEach(key => setEntry(key, '', 'not started', null));
+      els.loadingStageLabel.textContent = 'Starting diagnosis…';
+      document.querySelector('.processing-sub').textContent =
+        'Watch the chain of custody at left — this runs several real model calls and can take a few minutes.';
+      jobStartTime = Date.now();
+
       try {
-        const res = await fetch(`${API_BASE}/diagnose`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(`${API_BASE}/diagnose/start`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ structured_input: structured, max_revisions: 1 }),
         });
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
-        const data = await res.json();
-        renderResult(data);
-        showPanel(3);
-        setStepIndicator(3);
+        const { job_id } = await res.json();
+        stopPolling();
+        pollTimer = setInterval(() => pollJob(job_id), 1500);
+        pollJob(job_id);
       } catch (err) {
         showPanel(2);
-        setStepIndicator(2);
-        showError(`Couldn't complete the diagnosis: ${err.message}. Confirm the API is running at ${API_BASE}.`);
-      } finally {
-        stopLoadingAnimation();
+        showError(`Couldn't start the diagnosis: ${err.message}. Confirm the API is running at ${API_BASE}.`);
+
       }
     }
 
     els.btnDiagnose.addEventListener('click', runDiagnosis);
     els.btnRetry.addEventListener('click', runDiagnosis);
+    els.btnDownload.addEventListener('click', () => window.print());
 
-    // "Download" opens the browser's native print dialog rather than
-    // writing a file directly -- it reuses the exact DOM already on
-    // screen (via the @media print rules above) instead of running a
-    // second, separate PDF renderer that could drift from what the user
-    // is actually looking at. Any modern browser's "Save as PDF"
-    // destination turns this into a real downloaded file.
-    els.btnDownload.addEventListener('click', () => {
-      window.print();
-    });
+    // Stamps the ledger with the REAL result, not the simulated timer
+    // position. Mirrors orchestrator.py's actual hard branch: Orchestrator
+    // and Fidelity only run at all if the Auditor passed (final_passed).
+    function finalizeLedger(data) {
+      setEntry('researcher', 'done', 'complete', 'FILED');
+      setEntry('analyst', 'done', 'complete', 'FILED');
+
+      const auditorPassed = data.status === 'SYNTHESIZED' || data.status === 'FLAGGED_FIDELITY_FAILURE';
+      if (auditorPassed) {
+        const label = data.total_attempts > 1 ? `PASS (rev. ${data.total_attempts})` : 'PASS';
+        setEntry('auditor', 'done', data.total_attempts > 1 ? 'passed after revision' : 'passed · 1st attempt', label);
+        setEntry('orchestrator', 'done', 'complete', 'FILED');
+        if (data.status === 'SYNTHESIZED') {
+          setEntry('fidelity', 'done', 'all 3 checks passed', 'PASS');
+        } else {
+          setEntry('fidelity', 'flagged', 'one or more checks failed', 'HOLD');
+        }
+      } else {
+        setEntry('auditor', 'flagged', `did not pass in ${data.total_attempts || 1} attempt(s)`, 'HOLD');
+        setEntry('orchestrator', 'skipped', 'not run — audit unresolved', null);
+        setEntry('fidelity', 'skipped', 'not run — audit unresolved', null);
+      }
+    }
 
     function renderResult(data) {
       lastResultData = data;
-      els.stampVerified.style.display = 'none';
-      els.stampFlagged.style.display = 'none';
-      els.stampFidelityFailure.style.display = 'none';
-      // Retry only makes sense on a flagged result -- a clean SYNTHESIZED
-      // pass has nothing to retry. Reset to hidden here; the two flagged
-      // branches below turn it back on explicitly.
-      els.btnRetry.style.display = 'none';
       els.reasonsSlot.innerHTML = '';
       els.reportSlot.innerHTML = '';
+      els.btnRetry.style.display = 'none';
+      els.btnDownload.style.display = 'inline-flex';
+      els.verdictStamp.className = 'verdict-stamp';
 
-      // Download applies to all three statuses -- SYNTHESIZED has a
-      // finished report, and both flagged statuses still populate
-      // report-slot with a labelled draft below. Unlike Retry, there's
-      // no branch where this stays hidden.
-      els.btnDownload.style.display = 'inline-block';
+      els.attemptsNote.textContent = data.total_attempts > 1 ? 'Revised once before this result.' : 'Completed on the first pass.';
 
-      els.attemptsNote.textContent = data.total_attempts > 1
-        ? `Revised once before this result.`
-        : `Completed on the first pass.`;
+      function slamStamp(cls, html) {
+        els.verdictStamp.classList.add(cls);
+        els.verdictStamp.innerHTML = html;
+        requestAnimationFrame(() => els.verdictStamp.classList.add('show'));
+      }
 
       if (data.status === 'SYNTHESIZED') {
-        els.stampVerified.style.display = 'inline-block';
-        els.reportSlot.innerHTML = `<div class="report-body">${marked.parse(data.report || '')}</div>`;
+        els.headerStatus.textContent = 'VERIFIED';
+        els.docStatusLine.textContent = 'Verified report';
+        slamStamp('verified', 'VERIFIED<br>RELEASED');
+        els.reportSlot.innerHTML = marked.parse(data.report || '');
         document.title = 'MASS Diagnosis Report — Verified';
       } else if (data.status === 'FLAGGED_FIDELITY_FAILURE') {
-        // The diagnosis itself passed review -- only the polished write-up
-        // drifted from it. This is a materially different, less concerning
-        // situation than an audit failure and needs its own message, not
-        // the generic "wasn't verified" framing used below -- same
-        // reasoning as api.py's separate simplify_fidelity_feedback().
-        els.stampFidelityFailure.style.display = 'inline-block';
-        els.btnRetry.style.display = 'inline-block';
+        els.headerStatus.textContent = 'ON HOLD';
+        els.docStatusLine.textContent = 'Write-up flagged';
+        slamStamp('fidelity', 'ON HOLD<br>WRITE-UP');
+        els.btnRetry.style.display = 'inline-flex';
         const reasonItems = (data.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join('');
-        els.reasonsSlot.innerHTML = `
-        <div class="reasons-box fidelity">
-          <div class="reasons-title">The analysis passed review — the write-up just didn't match it exactly</div>
-          <ul>${reasonItems}</ul>
-        </div>`;
-        els.reportSlot.innerHTML = `
-        <div class="draft-label">Best-effort write-up — not yet verified against the underlying analysis</div>
-        <div class="report-body">${marked.parse(data.draft || '')}</div>`;
+        els.reasonsSlot.innerHTML = `<div class="reasons-box fidelity"><div class="reasons-title">The analysis passed review — the write-up just didn't match it exactly</div><ul>${reasonItems}</ul></div>`;
+        els.reportSlot.innerHTML = `<div class="draft-label">Best-effort write-up — not yet verified against the underlying analysis</div>${marked.parse(data.draft || '')}`;
         document.title = 'MASS Diagnosis Draft — Write-Up Flagged';
       } else {
-        els.stampFlagged.style.display = 'inline-block';
-        els.btnRetry.style.display = 'inline-block';
+        els.headerStatus.textContent = 'ON HOLD';
+        els.docStatusLine.textContent = 'Flagged for review';
+        slamStamp('', 'ON HOLD<br>REVIEW');
+        els.btnRetry.style.display = 'inline-flex';
         const reasonItems = (data.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join('');
-        els.reasonsSlot.innerHTML = `
-        <div class="reasons-box">
-          <div class="reasons-title">Why this wasn't fully verified</div>
-          <ul>${reasonItems}</ul>
-        </div>`;
-        els.reportSlot.innerHTML = `
-        <div class="draft-label">Best-effort draft — not independently verified</div>
-        <div class="report-body">${marked.parse(data.draft || '')}</div>`;
+        els.reasonsSlot.innerHTML = `<div class="reasons-box"><div class="reasons-title">Why this wasn't fully verified</div><ul>${reasonItems}</ul></div>`;
+        els.reportSlot.innerHTML = `<div class="draft-label">Best-effort draft — not independently verified</div>${marked.parse(data.draft || '')}`;
         document.title = 'MASS Diagnosis Draft — Flagged for Review';
       }
     }
@@ -884,15 +1255,17 @@
 
     els.btnRestart.addEventListener('click', () => {
       clearError();
-      els.rawInput.value = '';
-      els.editProblem.value = '';
-      els.editBackground.value = '';
-      els.editData.value = '';
+      els.rawInput.value = ''; els.editProblem.value = ''; els.editBackground.value = ''; els.editData.value = '';
       lastResultData = null;
-      document.title = 'MASS — Case Diagnosis';
+      document.title = 'MASS — Case File';
       try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { }
+      document.querySelectorAll('.entry').forEach((el, i) => {
+        el.className = 'entry' + (i === 0 ? ' active' : '');
+        el.querySelector('.entry-status').textContent = i === 0 ? 'awaiting input' : 'not started';
+        const s = el.querySelector('.entry-stamp'); if (s) s.remove();
+      });
+      els.headerStatus.textContent = 'AWAITING INTAKE';
       showPanel(1);
-      setStepIndicator(1);
     });
 
     restoreState();

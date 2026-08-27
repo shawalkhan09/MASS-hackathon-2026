@@ -535,18 +535,24 @@ def parse_verdict(audit_text: str) -> bool:
     return matches[-1].upper() == "PASS"
 
 
-def run_pipeline(case_text: str, max_revisions: int = 1) -> dict:
+def run_pipeline(case_text: str, max_revisions: int = 1, progress_cb=None) -> dict:
     """
     Full pipeline: Researcher -> Analyst -> Auditor, with up to
     max_revisions revision+re-audit cycles if the Auditor fails the
     diagnosis. max_revisions=1 means at most 2 total Analyst attempts
     (1 draft + 1 revision) and at most 2 Auditor calls.
 
+    progress_cb: optional callable(stage: str, attempt: int) for
+    external progress reporting. Called before each major step.
+    No-op when None (the default) -- existing callers are unaffected.
+
     Returns a dict with the full attempt history (not just the final
     result) -- the history itself is worth keeping: it's direct evidence
     of whether the revision loop actually improves output, not just a
     claim that it does.
     """
+    if progress_cb:
+        progress_cb("researcher", 1)
     framework_context = run_researcher(case_text)
 
     # Small pacing delay before the Analyst's first call -- same 15
@@ -555,6 +561,8 @@ def run_pipeline(case_text: str, max_revisions: int = 1) -> dict:
     # possible rate-limit hit.
     time.sleep(5)
 
+    if progress_cb:
+        progress_cb("analyst", 1)
     diagnosis = run_analyst_draft(case_text, framework_context)
 
     history = []
@@ -563,6 +571,8 @@ def run_pipeline(case_text: str, max_revisions: int = 1) -> dict:
         # Same reasoning: pace before every Auditor call, whether this
         # is the first pass or a post-revision recheck.
         time.sleep(5)
+        if progress_cb:
+            progress_cb("auditor", attempt)
         audit = run_auditor(case_text, diagnosis)
         passed = parse_verdict(audit)
         history.append({
@@ -577,6 +587,8 @@ def run_pipeline(case_text: str, max_revisions: int = 1) -> dict:
         if passed or attempt > max_revisions:
             break
 
+        if progress_cb:
+            progress_cb("analyst", attempt + 1)
         diagnosis = run_analyst_revision(case_text, framework_context, diagnosis, audit)
         attempt += 1
 

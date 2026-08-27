@@ -62,11 +62,13 @@ load.
 """
 
 import re
+import threading
+import uuid
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 
 from intake import run_intake
 from crewai_pipeline import run_pipeline
@@ -84,6 +86,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# In-memory job store for the async /diagnose/start endpoint.
+# Single-demo-session scope -- no persistence, no cleanup, no auth.
+# Same guarded-lock pattern as retrieval_tool.py's _QUERY_LOCK.
+_jobs_lock = threading.Lock()
+_jobs: Dict[str, Dict[str, Any]] = {}
 
 
 class StructureRequest(BaseModel):
@@ -384,3 +392,113 @@ def diagnose(req: DiagnoseRequest):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ------------------------------------------------------------------
+# Async diagnosis job endpoints -- additive, no change to /diagnose.
+# ------------------------------------------------------------------
+
+def _run_diagnosis_job(job_id: str, structured_input: str, max_revisions: int):
+    """
+    Background thread target for /diagnose/start. Runs the full
+    pipeline + orchestrator with a progress_cb that updates the
+    in-memory job store, so a polling client can watch the stages
+    advance in real time.
+    """
+    def _progress_cb(stage: str, attempt):
+        with _jobs_lock:
+            _jobs[job_id]["stage"] = stage
+            _jobs[job_id]["attempt"] = attempt
+
+    try:
+        with _jobs_lock:
+            _jobs[job_id]["stage"] = "starting"
+
+        pipeline_result = run_pipeline(
+            structured_input,
+            max_revisions=max_revisions,
+            progress_cb=_progress_cb,
+        )
+        orchestrator_result = run_orchestrator(
+            pipeline_result,
+            progress_cb=_progress_cb,
+        )
+
+        with _jobs_lock:
+            _jobs[job_id].update({
+                "stage": "done",
+                "attempt": None,
+                "status": "complete",
+                "result": {
+                    "status": orchestrator_result["status"],
+                    "report": orchestrator_result.get("final_report"),
+                    "draft": orchestrator_result.get("unverified_report"),
+                    "reasons": (
+                        simplify_fidelity_feedback(
+                            orchestrator_result["fidelity_verdict"]
+                        )
+                        if orchestrator_result["status"] == "FLAGGED_FIDELITY_FAILURE"
+                        and orchestrator_result.get("fidelity_verdict")
+                        else (
+                            simplify_audit_feedback(
+                                pipeline_result["history"][-1]["audit"]
+                            )
+                            if orchestrator_result["status"] == "FLAGGED_FOR_REVIEW"
+                            else None
+                        )
+                    ),
+                    "total_attempts": pipeline_result["total_attempts"],
+                },
+            })
+
+    except Exception as exc:
+        with _jobs_lock:
+            _jobs[job_id].update({
+                "stage": "error",
+                "attempt": None,
+                "status": "error",
+                "error": str(exc),
+            })
+
+
+@app.post("/diagnose/start")
+def diagnose_start(req: DiagnoseRequest):
+    """
+    Kicks off a full pipeline + orchestrator run in a background
+    thread and returns immediately with a job_id. Poll
+    GET /diagnose/status/{job_id} for progress and final result.
+    """
+    if not req.structured_input or not req.structured_input.strip():
+        raise HTTPException(status_code=400, detail="structured_input must not be empty")
+
+    job_id = str(uuid.uuid4())
+    with _jobs_lock:
+        _jobs[job_id] = {
+            "stage": "queued",
+            "attempt": None,
+            "status": "running",
+        }
+
+    t = threading.Thread(
+        target=_run_diagnosis_job,
+        args=(job_id, req.structured_input, req.max_revisions),
+        daemon=True,
+    )
+    t.start()
+
+    return {"job_id": job_id}
+
+
+@app.get("/diagnose/status/{job_id}")
+def diagnose_status(job_id: str):
+    """
+    Returns the current state of a job started via /diagnose/start.
+    404 if the job_id is unknown.
+    """
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Unknown job_id")
+
+    return job

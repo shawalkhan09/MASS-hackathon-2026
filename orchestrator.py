@@ -213,7 +213,7 @@ def run_synthesis(approved_diagnosis: str) -> str:
     }))
 
 
-def run_orchestrator(pipeline_result: dict) -> dict:
+def run_orchestrator(pipeline_result: dict, progress_cb=None) -> dict:
     """
     Takes a crewai_pipeline.run_pipeline() result dict and
     either synthesizes a client-facing report (only if the diagnosis
@@ -222,6 +222,10 @@ def run_orchestrator(pipeline_result: dict) -> dict:
 
     This branch is the load-bearing part of this module -- see the
     module docstring. It is checked first, before anything else runs.
+
+    progress_cb: optional callable(stage: str, attempt) for external
+    progress reporting. Called before synthesis and fidelity check.
+    No-op when None (the default) -- existing callers are unaffected.
 
     Returns:
         {
@@ -253,6 +257,8 @@ def run_orchestrator(pipeline_result: dict) -> dict:
             "unverified_report": None,
         }
 
+    if progress_cb:
+        progress_cb("orchestrator", None)
     report = run_synthesis(
         approved_diagnosis=pipeline_result["final_diagnosis"],
     )
@@ -266,6 +272,8 @@ def run_orchestrator(pipeline_result: dict) -> dict:
     # delay handles pacing across the whole batch separately.
     time.sleep(5)
 
+    if progress_cb:
+        progress_cb("fidelity", None)
     fidelity_result = run_fidelity_check(
         approved_diagnosis=pipeline_result["final_diagnosis"],
         final_report=report,
