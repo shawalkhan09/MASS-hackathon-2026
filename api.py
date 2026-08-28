@@ -113,6 +113,10 @@ class DiagnoseResponse(BaseModel):
     draft: Optional[str] = None
     reasons: Optional[List[str]] = None
     total_attempts: int
+    # Debug-only: the raw fidelity verdict text, for inspecting the
+    # fidelity check's own output. None when not applicable (same
+    # pattern as draft/unverified_report). Not shown in the UI.
+    raw_fidelity_verdict: Optional[str] = None
 
 
 def simplify_audit_feedback(audit_text: str) -> List[str]:
@@ -329,9 +333,31 @@ def simplify_fidelity_feedback(fidelity_verdict_text: str) -> List[str]:
             rf"(?:Instances found:)?\s*(.+?)(?=\n###|\Z)",
             fidelity_verdict_text, re.DOTALL | re.IGNORECASE,
         )
-        if section_match:
-            first_line = section_match.group(1).strip().split("\n")[0]
-            reasons.append(f"In the polished write-up, {framing}: {first_line}")
+        if not section_match:
+            continue
+
+        instances_text = section_match.group(1).strip()
+        fail_snippets = []
+        seen = set()
+        for chunk in re.split(r"\n\s*(?:\d+\.|[-*])\s+", instances_text):
+            chunk = chunk.strip()
+            if not chunk or not re.search(r"\bFAIL\b", chunk):
+                continue
+            key = chunk[:60]
+            if key in seen:
+                continue
+            seen.add(key)
+            fail_snippets.append(" ".join(chunk.split())[:400])
+
+        if fail_snippets:
+            for snippet in fail_snippets[:3]:
+                reasons.append(f"In the polished write-up, {framing}: {snippet}")
+        else:
+            reasons.append(
+                f"In the polished write-up, {framing}, per the reviewer's "
+                f"findings for this check. See the full technical review "
+                f"for specifics."
+            )
 
     if not reasons:
         reasons.append(
@@ -377,6 +403,7 @@ def diagnose(req: DiagnoseRequest):
             draft=orchestrator_result.get("unverified_report"),
             reasons=simplify_fidelity_feedback(orchestrator_result["fidelity_verdict"]),
             total_attempts=pipeline_result["total_attempts"],
+            raw_fidelity_verdict=orchestrator_result.get("fidelity_verdict"),
         )
 
     # FLAGGED_FOR_REVIEW -- the diagnosis itself never passed audit.
@@ -448,6 +475,9 @@ def _run_diagnosis_job(job_id: str, structured_input: str, max_revisions: int):
                         )
                     ),
                     "total_attempts": pipeline_result["total_attempts"],
+                    # Debug-only: raw fidelity verdict text, same
+                    # status as draft/unverified_report above.
+                    "raw_fidelity_verdict": orchestrator_result.get("fidelity_verdict"),
                 },
             })
 
