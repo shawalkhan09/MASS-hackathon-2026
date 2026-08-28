@@ -1238,7 +1238,7 @@
       } else {
         els.headerStatus.textContent = 'ON HOLD';
         els.docStatusLine.textContent = 'Flagged for review';
-        slamStamp('', 'ON HOLD<br>REVIEW');
+        slamStamp('flagged', 'ON HOLD<br>REVIEW');
         els.btnRetry.style.display = 'inline-flex';
         const reasonItems = (data.reasons || []).map(r => `<li>${escapeHtml(r)}</li>`).join('');
         els.reasonsSlot.innerHTML = `<div class="reasons-box"><div class="reasons-title">Why this wasn't fully verified</div><ul>${reasonItems}</ul></div>`;
