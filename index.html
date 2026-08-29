@@ -893,7 +893,7 @@
 
     <footer class="disclaimer">
       Prototype for demonstration and testing. The intake step that organizes your description into a structured
-      problem is designed to never invent facts you didn't provide — you're checking its work in Step 2 before
+      problem is designed to never invent facts you didn't provide - you're checking its work in Step 2 before
       anything runs on it. Ledger entries marked "not run" reflect the real system: the Orchestrator makes zero
       model calls if the Auditor never passes, so nothing downstream executes on an unverified diagnosis.
     </footer>
@@ -954,10 +954,12 @@
     const STORAGE_KEY = 'mass-demo-state-v2';
     let currentPanelName = 1;
     let lastResultData = null;
+    let currentCaseNo = null;
 
     function saveState() {
       const state = {
         panel: currentPanelName,
+        caseNo: currentCaseNo,
         rawInput: els.rawInput.value,
         editProblem: els.editProblem.value,
         editBackground: els.editBackground.value,
@@ -968,12 +970,18 @@
     }
 
     function restoreState() {
-      let saved;
+      let saved = null;
       try {
         const raw = sessionStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        saved = JSON.parse(raw);
-      } catch (e) { return; }
+        if (raw) saved = JSON.parse(raw);
+      } catch (e) { saved = null; }
+
+      // Always show a real case number on first paint — restored from this
+      // session's prior run if one exists, otherwise a fresh pending one.
+      // Never falls through to the static "2026-0027" left in the markup.
+      setCaseNo((saved && saved.caseNo) ? saved.caseNo : deriveCaseNo(randomHexSeed()));
+
+      if (!saved) return;
 
       els.rawInput.value = saved.rawInput || '';
       els.editProblem.value = saved.editProblem || '';
@@ -1149,14 +1157,30 @@
     });
 
     // Case numbers were previously a static "2026-0027" placeholder left in the
-    // markup — every run showed the identical, fake case number. Derives a
-    // real one instead, deterministic per job_id (so it's stable across the
-    // polling re-renders of the same run) rather than random per render.
-    function deriveCaseNo(jobId) {
+    // markup — every run, and even the empty landing page before any run,
+    // showed the identical fake number. deriveCaseNo() turns any hex-ish seed
+    // into a stable YYYY-NNNN display number. randomHexSeed() gives every
+    // fresh session its own "pending" case number immediately on load, before
+    // any real job exists; runDiagnosis() later overwrites it with a number
+    // derived from the backend's actual job_id once a real run starts.
+    function deriveCaseNo(seed) {
       const year = new Date().getFullYear();
-      const hexSeed = jobId.replace(/-/g, '').slice(0, 8);
+      const hexSeed = seed.replace(/-/g, '').slice(0, 8);
       const num = parseInt(hexSeed, 16) % 10000;
       return `${year}-${String(num).padStart(4, '0')}`;
+    }
+
+    function randomHexSeed() {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+      let s = '';
+      for (let i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16);
+      return s;
+    }
+
+    function setCaseNo(no) {
+      currentCaseNo = no;
+      if (els.caseNo) els.caseNo.textContent = no;
+      if (els.docCaseNo) els.docCaseNo.textContent = no;
     }
 
     async function runDiagnosis() {
@@ -1179,9 +1203,7 @@
         });
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const { job_id } = await res.json();
-        const caseNo = deriveCaseNo(job_id);
-        if (els.caseNo) els.caseNo.textContent = caseNo;
-        if (els.docCaseNo) els.docCaseNo.textContent = caseNo;
+        setCaseNo(deriveCaseNo(job_id));
         stopPolling();
         pollTimer = setInterval(() => pollJob(job_id), 1500);
         pollJob(job_id);
@@ -1273,6 +1295,7 @@
       clearError();
       els.rawInput.value = ''; els.editProblem.value = ''; els.editBackground.value = ''; els.editData.value = '';
       lastResultData = null;
+      setCaseNo(deriveCaseNo(randomHexSeed()));
       document.title = 'MASS — Case File';
       try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { }
       document.querySelectorAll('.entry').forEach((el, i) => {
