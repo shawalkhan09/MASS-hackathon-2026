@@ -759,7 +759,7 @@
       <div>
         <div class="brand-eyebrow"><span class="dot"></span>Multi-Agent Analysis &amp; Synthesis</div>
         <h1 class="brand-title">Describe a problem. Get an audited diagnosis.</h1>
-        <p class="brand-sub">Every finding is checked before you see it — if something couldn't be verified,
+        <p class="brand-sub">Every finding is checked before you see it - if something couldn't be verified,
           you'll see exactly why, not a polished answer standing in for one.</p>
       </div>
       <div class="case-no">
@@ -823,7 +823,7 @@
             <div class="field-block">
               <label class="field-label" for="raw-input">What's going on?</label>
               <textarea id="raw-input" rows="8"
-                placeholder="Describe the situation in your own words — what happened, what led up to it, and any numbers or data you have. Don't worry about organizing it."></textarea>
+                placeholder="Describe the situation in your own words - what happened, what led up to it, and any numbers or data you have. Don't worry about organizing it."></textarea>
               <div class="field-hint">Write it the way you'd explain it to a colleague. The next step will organize
                 it for you to check.</div>
             </div>
@@ -922,6 +922,8 @@
       errorSlot: document.getElementById('error-slot'),
       loadingStageLabel: document.getElementById('loading-stage-label'),
       headerStatus: document.getElementById('headerStatus'),
+      caseNo: document.getElementById('caseNo'),
+      docCaseNo: document.getElementById('docCaseNo'),
       docStatusLine: document.getElementById('docStatusLine'),
       verdictStamp: document.getElementById('verdictStamp'),
       docCard: document.getElementById('docCard'),
@@ -1146,6 +1148,17 @@
       showPanel(1);
     });
 
+    // Case numbers were previously a static "2026-0027" placeholder left in the
+    // markup — every run showed the identical, fake case number. Derives a
+    // real one instead, deterministic per job_id (so it's stable across the
+    // polling re-renders of the same run) rather than random per render.
+    function deriveCaseNo(jobId) {
+      const year = new Date().getFullYear();
+      const hexSeed = jobId.replace(/-/g, '').slice(0, 8);
+      const num = parseInt(hexSeed, 16) % 10000;
+      return `${year}-${String(num).padStart(4, '0')}`;
+    }
+
     async function runDiagnosis() {
       clearError();
       const structured = reassembleStructured();
@@ -1166,6 +1179,9 @@
         });
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const { job_id } = await res.json();
+        const caseNo = deriveCaseNo(job_id);
+        if (els.caseNo) els.caseNo.textContent = caseNo;
+        if (els.docCaseNo) els.docCaseNo.textContent = caseNo;
         stopPolling();
         pollTimer = setInterval(() => pollJob(job_id), 1500);
         pollJob(job_id);
