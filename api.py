@@ -179,7 +179,20 @@ def simplify_audit_feedback(audit_text: str) -> List[str]:
         r"Check 2.*?Status:\s*FAIL", audit_text, re.DOTALL | re.IGNORECASE
     )
     if check2_overall_fail:
-        check2_section_match = re.search(r"Check 2.*", audit_text, re.DOTALL | re.IGNORECASE)
+        # Bounded to stop before the NEXT "###" heading (i.e. Check 3),
+        # matching the same fix already applied to Check 3's own section
+        # match below. The original unbounded `r"Check 2.*"` (DOTALL, no
+        # lookahead) captured from "Check 2" straight through to the end
+        # of the document -- Check 3 included -- so Check 3's own
+        # numbered FAIL instances were swept into Check 2's instance
+        # regex and mislabeled with Check 2's ranking-specific framing.
+        # Confirmed against real captured output where a genuine Check 3
+        # finding (a fabricated technical mechanism) appeared twice: once
+        # correctly under Check 3's framing, and once truncated/garbled
+        # under Check 2's.
+        check2_section_match = re.search(
+            r"Check 2.*?(?=\n###|\Z)", audit_text, re.DOTALL | re.IGNORECASE
+        )
         check2_text = check2_section_match.group(0)
         # Only match numbered instances that are THEMSELVES marked FAIL --
         # never a PASS instance's reasoning, even when Check 2's overall
