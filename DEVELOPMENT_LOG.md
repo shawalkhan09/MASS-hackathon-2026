@@ -1,6 +1,6 @@
 # MASS Project — Development Log
 
-**Multi-Agent Strategy Swarm — FYP**
+**Multi-Agent Strategy Swarm**
 
 ## How to use this document
 
@@ -12,7 +12,7 @@ its job is completeness, not readability. It exists for three reasons:
 2. **Evidence of process** — if a supervisor or examiner asks "walk me through a
    challenge you faced," this document already has the answer, dated and specific.
 3. **Raw material** for the polished "Engineering Challenges" section that belongs
-   in the actual FYP report — that section should be written *from* this log, not
+   in the actual report — that section should be written *from* this log, not
    from memory, once this log is complete.
 
 **Entry format:** each numbered phase covers one coherent piece of work. Within a
@@ -2258,3 +2258,111 @@ Diagnosis/Fix: Added a Check 3 block to simplify_audit_feedback(), matching the 
 All 31 real files with a genuine Check 3 FAIL now extract a clean, accurate quote. A regression check compared every one of the 65 files' output against a frozen copy of the pre-edit function: 64 of 65 byte-identical for non-Check-3 content, confirming the new block is additive only. The one "mismatch" is explained rather than dismissed: it is the same double-verdict self-correction file first identified in Phase 41, whose own saved header field records the pre-fix parser's incorrect PASS rather than the model's actual corrected FAIL; the new Check 3 block correctly surfaces the real fabricated claim from the corrected verdict, a genuine improvement over the old function's generic fallback on this file, not a regression.
 
 Lesson: this validation reused this session's own accumulated test data rather than generating anything new, at zero additional API cost -- a direct benefit of having saved full raw verdict text throughout every round of Check 3's development rather than only pass/fail tallies. Each of the five bugs was diagnosed from actual captured output rather than anticipated in advance, consistent with this project's practice of iterating against real data until quality is confirmed, not merely until code executes without error.
+
+
+---
+
+## Phase 48 — RAG Ground-Truth Leakage Closed in chunk_cases()
+
+Problem: `case_loader.py` strips the `Documented Root Cause` / `Ground-Truth Diagnosis Summary` sections before any agent sees a case as diagnostic input, via its `INPUT_SECTIONS` filter. `rag_pipeline_starter.py`'s `chunk_case_file()` did not apply that same filter -- it indexed every section of a case file, including the ground-truth sections, creating a leakage path into Researcher retrieval that `case_loader.py`'s existing protection did not cover, since the two functions operated on the same raw files through entirely separate code paths.
+
+Fix: `chunk_case_file()` now imports `INPUT_SECTIONS` directly from `case_loader.py` and skips any section header not in that set, so the RAG corpus and the direct diagnostic input are built from the exact same filter rather than two independently maintained ones.
+
+Diagnosis/Validation: Rebuilt the corpus and confirmed 9/9 case chunks with zero leaked ground-truth headers present in the indexed output.
+
+Lesson: two components deriving from the same source data but enforcing a safety property independently is itself the risk -- `case_loader.py` being correct said nothing about whether `rag_pipeline_starter.py` was. Importing the single source of truth (`INPUT_SECTIONS`) rather than re-encoding the same section list in a second place is what actually closes this class of bug, not just fixing this one instance of it.
+
+
+---
+
+## Phase 49 — Qoder Tooling: Project Standards, Agent Skills, and MCP Retrieval Server
+
+Problem: Delegating build work to Qoder needed the project's own hard-won standards and each agent's exact spec encoded somewhere Qoder would actually read them, rather than re-explained per session. Separately, Qoder had no way to query the RAG corpus directly during a build task.
+
+Fix:
+- Added `.qoder/rules/mass-standards.md`, encoding five standards derived from confirmed bugs and lessons already in this log: ground-truth isolation in RAG indexing (Phase 48), the Auditor's exact check count and which file implements it (`crewai_pipeline.py`, not `fidelity_check.py` -- an easy layer to confuse), evidence-traceable agent claims, frozen case studies, and no unverified assumptions in generated code.
+- Added six Qoder skills under `.qoder/skills/`, each encoding one agent's spec verbatim from source rather than paraphrased: `run-intake` (no-invented-content constraint, exact output format matching `INPUT_SECTIONS`, with two open items flagged directly from the source itself), `run-researcher` (the mandatory reformulate-before-search step, since raw-case-wording queries measurably fail to retrieve relevant frameworks), `run-analyst` (unresolved-cause preservation, revision-loop scope), `run-auditor` (the full 3-check spec plus `parse_verdict()`'s self-correction handling), `run-orchestrator` (the hard never-synthesize-unaudited branch, narrow input surface, and why `fidelity_check.py`'s three checks must stay isolated calls), and `add-case-study` (the case file template and post-add leakage verification, so a new case can't silently break `INPUT_SECTIONS`).
+- Added `mass_retrieval_mcp.py`, an MCP server wrapping `retrieval_tool.retrieve_knowledge()` directly over stdio for Qoder rather than reimplementing ChromaDB query logic, so it inherits the existing eager-build and `threading.Lock()` protection against the native crash documented in Phase 10. Verified against the real BGE backend with 3 concurrent stdio tool calls, no crash.
+- Separately confirmed (not fixed, since there was nothing to fix) that `run_intake()`'s literal output doesn't byte-match `case_loader.py`'s `diagnostic_input` formatting (no title line, no blank line after headers) -- checked and found to have zero functional impact, since `case_text` is never re-parsed programmatically downstream. Deliberately left `INTAKE_DESCRIPTION` untouched rather than forcing byte-consistency for a cosmetic difference with no demonstrated cost, which would have invalidated Phase 35's existing validation for no real gain.
+
+Lesson: writing these as skills rather than one-off instructions is itself a form of the project's own "restrict what a component can see, don't just instruct it to behave" principle (ROADMAP.md, Section 2.1) -- each skill hands Qoder the actual constraint from the actual source file, not a summary of it that could drift out of sync.
+
+
+---
+
+## Phase 50 — Two-Venv Dependency Split: Native Gemini Provider and ChromaDB Schema Conflict
+
+Problem: `crewai` 1.15.17 routes `gemini/*` models through a native `GeminiCompletion` provider by default, not LiteLLM, which requires the `google-genai` extra to be present -- installing without it, or letting pip backtrack into an older `crewai` release to resolve a conflict, silently pulls in `langchain`/`tiktoken` instead. Separately, once the MCP server (Phase 49) and the pipeline were both running, they were sharing one `chroma_db_v2/` persist directory -- but the MCP server's environment (`.venv`, Python 3.14, ChromaDB 1.5.9) and the pipeline's (`venv312`, Python 3.12, ChromaDB 1.1.1) each have native Rust bindings that cannot read the other version's on-disk schema.
+
+Fix: Pinned `crewai[google-genai]==1.15.17` exactly in `requirements.txt` to stop pip from backtracking. Made the ChromaDB persist directory configurable via a `CHROMA_PERSIST_DIR` environment variable across `chroma_retriever_v2.py`, `retrieval_tool.py`, and `mass_retrieval_mcp.py` -- defaulting to `chroma_db_v2_pipeline` for direct pipeline use, with the MCP server explicitly overriding to `chroma_db_v2_mcp` before its eager import-time build runs. Each environment now maintains a fully separate index. Also added `fastapi`/`uvicorn` to `requirements.txt`, missing despite `api.py` depending on both.
+
+Diagnosis: Confirmed via real installs in both environments that each now resolves cleanly and builds its own index without touching the other's.
+
+Lesson: consistent with Phase 10's original finding (native bindings aren't safe to share across contexts) -- this is the same category of risk one level up, at the process/environment boundary rather than the threading boundary, and it required the same fix in spirit: give each context its own resource rather than trying to make one shared resource safe for both.
+
+
+---
+
+## Phase 51 — MCP Server Startup Failure: stderr During Eager Model Load
+
+Problem: Qoder's MCP host treats any stderr emitted during a server's startup window as a connection failure. `mass_retrieval_mcp.py`'s eager import-time build (loading the BGE embedding model) triggers an HF Hub unauthenticated-request warning and a tqdm progress bar, both to stderr -- tripping Qoder's failure detection and showing the server as disconnected (red icon) even though the server itself was working correctly once past that window.
+
+Fix: Redirect both stdout and stderr to `os.devnull` specifically during the import window that triggers the model load, restoring them immediately after. Serve-time stderr (MCP SDK logs, per-query tqdm bars during actual tool calls) is left untouched and does not trigger the same failure, since it happens after Qoder has already accepted the connection.
+
+Diagnosis: Confirmed the server now connects cleanly in Qoder with no change to its actual retrieval behavior.
+
+Lesson: the failure mode here wasn't a bug in the server's logic at all -- the server worked -- it was an artifact of what the host process treats as a startup signal. Suppressing noise at exactly the window that matters, rather than suppressing it everywhere, keeps genuine runtime errors visible while removing the false signal.
+
+
+---
+
+## Phase 52 — Real-Time Progress Tracking for the Diagnosis Pipeline
+
+Problem: The demo UI's loading state was a simulated timer, not a reflection of actual backend pipeline progress -- it couldn't show which stage was genuinely running, or a real Auditor revision attempt number if one occurred.
+
+Fix: Added an optional `progress_cb` parameter to `run_pipeline()` and `run_orchestrator()` (default `None`, zero behavior change for existing callers) that reports real stage transitions: Researcher, Analyst, Auditor (with the actual revision attempt number), Orchestrator, Fidelity. Added two new, additive endpoints to `api.py`: `POST /diagnose/start` (starts the pipeline in a background thread, returns a `job_id` immediately) and `GET /diagnose/status/{job_id}` (polls real progress and the final result). The original `/diagnose` endpoint is untouched. `index.html`'s simulated timer was replaced with real polling against these endpoints.
+
+Diagnosis: Verified against a live run that genuinely revised once before passing -- the UI's chain-of-custody ledger correctly showed the real attempt number rather than a fixed animation.
+
+Lesson: this is the same "a clean result is not evidence, a clean result checked against its source is" principle (ROADMAP.md, Section 2.4) applied to the demo layer itself -- a UI that looks like it's tracking real progress needed to be checked against a run where the real progress was actually irregular (a genuine revision), not just a clean first-pass run where a simulated timer would have looked identical to the real thing.
+
+
+---
+
+## Phase 53 — UI Freeze on FLAGGED_FOR_REVIEW: Empty Class Name Throws Mid-Render
+
+Problem: A real demo run that ended in `FLAGGED_FOR_REVIEW` froze the UI on its last loading-stage text, with polling already stopped and no error surfaced to the user -- found via an actual failed run, not hypothetical review.
+
+Diagnosis: `renderResult()` called `slamStamp('', 'ON HOLD<br>REVIEW')` on the `FLAGGED_FOR_REVIEW` path specifically. `classList.add('')` throws a `DOMException` on an empty string, which aborted `renderResult()` immediately after `headerStatus` was set to `'ON HOLD'` but before `showPanel(3)` ran -- leaving the chain-of-custody ledger correctly updated (`finalizeLedger` had already completed) while the main panel stayed frozen. The `SYNTHESIZED` and `FLAGGED_FIDELITY_FAILURE` paths were unaffected, since they pass non-empty class names (`'verified'`, `'fidelity'`).
+
+Fix: Pass a non-empty, unstyled class name (`'flagged'`) instead of `''`. No CSS rule exists for `.verdict-stamp.flagged`, so the visual result is identical to what the empty string was meant to produce.
+
+Diagnosis/Validation: Re-ran the exact input that triggered the freeze; the UI now renders the reasons box and draft correctly instead of hanging.
+
+Lesson: a one-character difference (`''` vs. a real string) in a rarely-exercised code path (the specific verdict that skips both other outcomes) is exactly the kind of bug that survives testing focused on the common-case paths -- this was only caught because a genuinely varied verdict was actually triggered during testing, not assumed to behave like the other two.
+
+
+---
+
+## Phase 54 — Two Real Pakistani Cases Added; Fidelity Feedback Extraction Bug Fixed
+
+Problem: The corpus contained three real cases, all Western (Southwest, Boeing, Peloton) -- credible as an architecture demonstration, but with no case grounded in the market this project's own judges live in. Separately, `simplify_fidelity_feedback()` (the demo UI's equivalent of `simplify_audit_feedback()` for the fidelity check) took only the first line following "Instances found:" per check, with no check for whether that first-listed instance was itself PASS or FAIL -- silently dropping every real fidelity violation beyond the first, or showing a PASS instance's own text as if it were the stated reason.
+
+Fix: Added two real, publicly documented Pakistani cases to the corpus: `Case_04_PIA_Karachi_Crash_and_Financial_Crisis.md` (PIA's 2020 Karachi crash, the pilot license scandal, and the decade-long financial crisis and privatization that followed) and `Case_05_Airlift_Technologies_Collapse.md` (Airlift Technologies' 2022 shutdown, six days after its lead funding round collapsed). Fixed `simplify_fidelity_feedback()` to split "Instances found:" into per-instance chunks, keep only chunks with a case-sensitive FAIL marker (the same approach Check 3's extraction already used elsewhere in `api.py`), and surface up to 3 full instances per check instead of one truncated, unfiltered line. Also exposed `result.raw_fidelity_verdict` (debug-only, same status as `unverified_report`) so future fidelity failures can be diagnosed directly from the API response instead of relying on scrollback-dependent terminal logs.
+
+Diagnosis/Validation: Both new cases validated end-to-end through the live pipeline -- passed audit on the first attempt, correctly distinguished trigger from root cause on genuinely ambiguous real facts, and both surfaced real Check C findings that exercised the fidelity-feedback fix directly. Confirmed against two real runs (Airlift, PIA) that the pre-fix version could have shown a PASS instance's own text as the stated reason.
+
+Lesson: the corpus-expansion and the bug-fix are reported together because the bug was found by the corpus expansion -- new, genuinely ambiguous cases exercised a code path the original three-case corpus's outputs hadn't happened to trigger in a way that surfaced this specific defect. Expanding real test data continues to be how this project's real bugs get found, not designed-for review.
+
+
+---
+
+## Phase 55 — Check 2/Check 3 Feedback Boundary Bug Fixed; Check 1 Part B Characterized at n=6 (Ohio Warehouse)
+
+Problem: `simplify_audit_feedback()`'s Check 2 section match used an unbounded `r"Check 2.*"` (DOTALL, no lookahead), capturing from "Check 2" through the rest of the document -- Check 3 included -- rather than stopping at the next `###` heading the way Check 3's own section match already correctly did. When Check 2's overall status was FAIL, its numbered-FAIL-instance regex swept up Check 3's own numbered FAIL instances too, mislabeling genuine technical-fabrication findings with Check 2's ranking-specific framing. Confirmed against real captured output showing the same Check 3 finding twice: once correctly labeled, once truncated and mislabeled as a ranking issue.
+
+Fix: Bounded Check 2's section match identically to Check 3's existing pattern: `Check 2.*?(?=\n###|\Z)`.
+
+Separately, this phase also folds in a constructed test of Check 1 Part B (does the Auditor reliably reject an internal decision mislabeled as an external trigger?) using a synthetic "Ohio Warehouse" fixture with no genuine external trigger present. 6 independent trials run: Check 1 Part B correctly rejected the internally-caused trigger in 5 of 6. No reproducible link was found between the one miss and how the trigger was phrased -- an earlier working hypothesis that symptom-framing evades detection while decision-framing gets caught did not survive a later trial, where a symptom-phrased trigger was caught cleanly.
+
+Lesson: reported at exactly the scale it was tested -- 5/6 (~83%), no established failure pattern -- rather than rounded up to a stronger claim or a fix attempted against a pattern that isn't actually confirmed to exist. Consistent with this project's standing rule (ROADMAP.md, Section 2.5): one observation isn't a pattern, and a hypothesis that doesn't survive a further trial gets discarded, not defended. This finding does not yet meet the n=9-per-fixture bar Check 1's and Check 2's own validated write-ups are held to (see Phase 45) -- a further round at that scale is the natural next step before treating the 5/6 figure as more than directional.

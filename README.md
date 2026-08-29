@@ -2,8 +2,6 @@
 
 MASS turns a raw business case into an audited, evidence-grounded diagnostic report. Instead of one AI model guessing at root causes, a pipeline of specialized agents — an Intake specialist, a Researcher, an Analyst, an Auditor, and an Orchestrator — cross-check every claim against the case data before anything reaches a reader, catching the fabricated statistics and unsupported rankings a single unscaffolded model call would otherwise produce with total confidence.
 
-Built as a Final Year Project at IMSciences, on top of [CrewAI](https://github.com/crewAIInc/crewAI) and the Gemini API.
-
 ## How it works
 
 A business case goes in; a client-facing diagnostic report comes out, only if it survives two independent rounds of checking along the way.
@@ -27,29 +25,39 @@ A business case goes in; a client-facing diagnostic report comes out, only if it
 - The Auditor reliably catches fabricated numeric rankings and, after four rounds of iterative refinement, generalizes correctly to genuinely new cases rather than just memorizing three fixed test cases.
 - A verdict-parsing bug was found and fixed: the model can occasionally write a full verdict, visibly self-correct, and write a second corrected verdict in the same response. Parsing now takes the model's last stated verdict as authoritative (matching its own final conclusion) rather than its first, with a warning emitted whenever this occurs.
 - The Orchestrator's fidelity check has been through several rounds of calibration, including discovering — twice, from two unrelated edits — that its three sub-checks needed to run as fully isolated LLM calls rather than sharing one prompt, since a wording fix to one check could silently change a different, untouched check's behavior.
+- Three real bugs were found and fixed via genuine failed runs during demo-UI testing, not hypothetical review: a UI freeze on the `FLAGGED_FOR_REVIEW` verdict path (`classList.add('')` throws on an empty string, aborting the render mid-way), a feedback-extraction bug that silently dropped every fidelity-check violation beyond the first regardless of pass/fail status, and an unbounded regex that let Check 2's demo-facing feedback swallow and mislabel Check 3's own findings. All three confirmed against real captured output, fixed, and verified.
+- The demo UI now polls real backend pipeline state (`/diagnose/start` + `/diagnose/status/{job_id}`) instead of a simulated loading timer — the chain-of-custody ledger reflects actual stage transitions, including genuine Auditor revision attempts shown with their real attempt number.
 
 ### Known limitations
 
 - **Check 1 evaluates categorization, not root-cause content.** It checks whether a trigger and root cause are correctly distinguished and labeled, not whether the root cause's specific content is factually grounded — a diagnosis can pass Check 1 cleanly while still containing the kind of fabrication Check 3 exists to catch, since the two checks evaluate different properties.
 - **Check 3 is validated to 25/27 (92.6%) correct**, with one precisely characterized residual false-positive pattern (conflating a legitimate governance-level explanation with an invented technical-mechanism claim) — not claimed as perfect.
 - **No dedicated completeness check exists yet.** An omitted cause or consideration makes no checkable false claim, so it isn't caught by any current check — this would need its own, separately designed and validated check.
-- **The RAG corpus indexing does not yet mirror `case_loader.py`'s ground-truth filtering.** `case_loader.py` strips the `Documented Root Cause` / `Ground-Truth Diagnosis Summary` sections before any agent sees a case as direct input. The RAG corpus built from the same case files does not yet apply that same filter before embedding — identified during review, fix in progress.
+- **Check 1 Part B (is the labeled trigger genuinely external, not the company's own decision relabeled) catches an internally-caused trigger mislabeled as external in 5 of 6 trials on a constructed test case with no genuine external trigger present.** No reproducible link was found between the one miss and how the trigger was phrased — an earlier hypothesis that symptom-framing evades detection while decision-framing gets caught did not hold up under a later trial. Reported at the scale actually tested (n=6), not generalized beyond it.
+
+**Fixed since last documented:** the RAG corpus indexing previously did not mirror `case_loader.py`'s ground-truth filtering (`chunk_cases()` indexed every section of a case file, including `Documented Root Cause` and `Ground-Truth Diagnosis Summary`, creating a leakage path into Researcher retrieval that `case_loader.py`'s own filter didn't cover). `chunk_cases()` now imports and applies the same `INPUT_SECTIONS` filter `case_loader.py` uses, so only `Problem Statement`, `Background`, and `Supporting Data` are indexed. Verified against the real corpus: zero leaked headers present.
 
 Full details, including every finding that turned out to be wrong and why, are in [`DEVELOPMENT_LOG.md`](./DEVELOPMENT_LOG.md) — every phase documented chronologically as Problem → Diagnosis → Fix → Lesson, including the dead ends. [`ROADMAP.md`](./ROADMAP.md) is the standalone architecture spec and design philosophy, written to be readable on its own by someone new to the project.
 
 ## Case studies
 
-Three real, publicly documented business failures, not synthetic examples:
+Five real, publicly documented business failures, not synthetic examples:
 
 - Southwest Airlines' December 2022 operational meltdown
 - Boeing 737 MAX grounding
 - Peloton's inventory oversupply collapse
+- PIA's 2020 Karachi crash, pilot license scandal, and the decade-long financial crisis and privatization that followed
+- Airlift Technologies' 2022 shutdown, six days after its lead funding round collapsed
 
-Each case packet (`cases/`) includes ground-truth documentation used only for scoring, never shown to any agent as diagnostic input (see the known limitation above regarding the RAG index specifically).
+The two Pakistani cases were added specifically to ground the system in a market its judges actually live in, not just the three original Western cases. Both were validated end-to-end through the live pipeline: passed audit on the first attempt, and both correctly distinguished trigger from root cause on genuinely ambiguous real facts.
+
+Each case packet (`cases/`) includes ground-truth documentation used only for scoring, never shown to any agent as diagnostic input. The RAG corpus indexing was independently verified to apply the same filter (see Known Limitations above).
 
 ## Setup
 
-Requires Python 3.12 (the project's `tiktoken` dependency is incompatible with 3.14).
+The pipeline and the Qoder MCP retrieval server run in two separate virtual environments, because their dependencies conflict at the ChromaDB schema level (each version's native bindings can't read the other's on-disk index).
+
+**Pipeline (`venv312`, Python 3.12 — required, the project's `tiktoken` dependency is incompatible with 3.14):**
 
 ```bash
 python3.12 -m venv venv312
@@ -64,6 +72,30 @@ GEMINI_API_KEY=your-key-here
 ```
 
 The free tier caps at 15 requests/minute — the pipeline paces its own calls to stay under this, so a full run takes a few minutes per case rather than seconds.
+
+**MCP retrieval server (`.venv`, Python 3.14 — powers `mass-retrieval` for Qoder):**
+
+```bash
+python3.14 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Register it in Qoder under Settings → MCP → My Servers:
+
+```json
+{
+  "mcpServers": {
+    "mass-retrieval": {
+      "command": "<project>/.venv/bin/python",
+      "args": ["<project>/mass_retrieval_mcp.py"],
+      "env": {"RETRIEVAL_BACKEND": "bge"}
+    }
+  }
+}
+```
+
+Each environment persists its own ChromaDB index (`chroma_db_v2_pipeline` and `chroma_db_v2_mcp` respectively, via `CHROMA_PERSIST_DIR`) — rebuilding the corpus in one does not update the other.
 
 ## Usage
 
@@ -99,18 +131,21 @@ chroma_retriever.py           Embeddings retriever v1 (all-MiniLM-L6-v2) — kep
 chroma_retriever_v2.py        Embeddings retriever v2 (BAAI/bge-base-en-v1.5) — production retriever
 retrieval_tool.py             The Researcher's actual search tool
 retrieval_eval.py             Query -> expected-chunk scoring harness for retrieval quality
+mass_retrieval_mcp.py         MCP server exposing retrieve_knowledge to Qoder over stdio
 crewai_pipeline.py           Researcher, Analyst, Auditor agents + bounded revision loop
 orchestrator.py              Engagement Manager agent + synthesis
 fidelity_check.py            Independent post-synthesis fidelity check (3 isolated calls)
 baseline_single_llm.py       Unscaffolded single-call baseline for the ablation study
 baseline_forced_ranking.py   Forced-ranking baseline (deliberately decoupled model config)
-cases/                       The three case packets
+cases/                       The five case packets
 orchestrator_outputs/        Saved pipeline + orchestrator run output
 test_*.py                    Calibration and validation tests
-DEVELOPMENT_LOG.md           Full chronological development history (47 phases)
+.qoder/rules/                 Project standards enforced on generated code (ground-truth isolation, etc.)
+.qoder/skills/                Qoder skills encoding each agent's spec for delegated build tasks
+DEVELOPMENT_LOG.md           Full chronological development history
 ROADMAP.md                   Standalone architecture spec and design philosophy
 ```
 
 ## Status
 
-Core pipeline (Intake → Researcher → Analyst → Auditor) and the Orchestrator with its fidelity check are built and validated. See `DEVELOPMENT_LOG.md` for the current state of any work in progress, and the Known Limitations section above for what's deliberately not yet covered.
+Core pipeline (Intake → Researcher → Analyst → Auditor) and the Orchestrator with its fidelity check are built and validated against a five-case corpus, including two Pakistani cases. The demo UI reflects real backend pipeline state end-to-end, and the RAG corpus's ground-truth isolation has been independently verified. See `DEVELOPMENT_LOG.md` for the current state of any work in progress, and the Known Limitations section above for what's deliberately not yet covered.
