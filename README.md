@@ -99,7 +99,7 @@ Each environment persists its own ChromaDB index (`chroma_db_v2_pipeline` and `c
 
 ## Usage
 
-Run the full pipeline across all three cases:
+Run the full pipeline across all cases in `cases/` (currently five):
 
 ```bash
 python3 run_orchestrator_all_cases.py
@@ -122,7 +122,9 @@ python3 api.py
 ## Project structure
 
 ```
-api.py                      FastAPI demo backend (/structure, /diagnose, /health)
+api.py                      FastAPI demo backend (/structure, /diagnose, /health,
+                             /diagnose/start + /diagnose/status/{job_id} for the
+                             async polling flow the demo UI actually uses)
 intake.py                   Intake agent — raw text -> structured diagnostic input
 case_loader.py               Loads case packets, splits diagnostic_input from reference_material
 content_data.py              The 15-framework, four-tier knowledge base
@@ -137,6 +139,8 @@ orchestrator.py              Engagement Manager agent + synthesis
 fidelity_check.py            Independent post-synthesis fidelity check (3 isolated calls)
 baseline_single_llm.py       Unscaffolded single-call baseline for the ablation study
 baseline_forced_ranking.py   Forced-ranking baseline (deliberately decoupled model config)
+index.html                   Demo UI — intake, review, and result panels; talks to api.py
+                             directly and generates the downloadable PDF client-side
 cases/                       The five case packets
 orchestrator_outputs/        Saved pipeline + orchestrator run output
 test_*.py                    Calibration and validation tests
