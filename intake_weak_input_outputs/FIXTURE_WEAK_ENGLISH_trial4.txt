@@ -1,0 +1,21 @@
+# Intake weak-input test -- FIXTURE_WEAK_ENGLISH -- trial 4/5
+Run at: 2026-08-30T16:17:36
+GROUND TRUTH: weak grammar; figures: 3 month, 2 day -> 6 day, January, ~40 customers, ~500000 rupees (hedged); courier-causation hedged ('not 100% sure')
+
+## RAW INPUT
+we have big problem since 3 month. Our customer very angry because delivery always late. Before covid we deliver in 2 day now taking 6 day sometime more. We use new courier company from january this cause the problem I think but not 100% sure. We lose almost 40 customer already they stop order from us. Money loss maybe around 500000 rupees but I not calculate exact.
+
+## INTAKE OUTPUT
+## Problem Statement
+Deliveries are consistently late, causing customer dissatisfaction and a loss of customers.
+
+## Background
+The business has been experiencing this problem for three months. Prior to COVID, deliveries were completed in two days, but they currently take six days or more. The business began using a new courier company in January, which the user suspects may be the cause of the issue, though they are not certain. As a result of the delivery delays, customers have stopped placing orders.
+
+## Supporting Data
+*   Duration of problem: 3 months
+*   Previous delivery time: 2 days
+*   Current delivery time: 6 days or more
+*   Start of new courier contract: January
+*   Customers lost: Almost 40
+*   Estimated financial loss: Around 500,000 rupees (noted by user as not exactly calculated)
