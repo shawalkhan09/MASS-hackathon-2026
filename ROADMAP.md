@@ -133,3 +133,12 @@ These are open design questions and known boundaries of the approach — not a t
 - **Fabrication (in this project's specific sense):** a confident, specific, plausible-looking claim — most often a numeric or qualitative ranking of causes — asserted without the underlying data to actually support it.
 - **Fail-closed:** a design where a component defaults to doing nothing (or to an explicit failure/flag state) rather than proceeding, whenever its precondition for safely proceeding isn't met.
 - **Input surface:** the total set of content a given component has access to when making its call — restricting this deliberately, rather than only instructing the component on how to use it, is the project's primary technique for preventing a downstream stage from drawing on content it shouldn't.
+
+---
+
+## 9. Post-Hackathon Roadmap (Not Yet Built)
+
+Items identified as worth doing, deliberately deferred past the September 4, 2026 hackathon deadline so they don't risk destabilizing a working submission. Nothing in this section is built; it exists so these decisions aren't only remembered in conversation.
+
+- **Report persistence:** The backend job store (`_jobs` in `api.py`) is currently an in-memory dict, explicitly scoped as single-demo-session — no persistence, no cleanup, no auth. A server restart loses every past diagnosis, and the frontend's `sessionStorage` restore is scoped to a single browser tab, so nothing survives a closed tab either. The only durable artifact today is a PDF the user manually downloads. Planned fix: replace the in-memory dict with a SQLite-backed store (`job_id`, `case_no`, `structured_input`, `result_json`, `created_at`), so reports survive restarts and a "past reports" list becomes possible in the UI.
+- **Urdu language support:** Identified as a natural extension given MASS's intended Pakistani market. Only the Intake layer (structuring free-text input into a case packet) would need changes; retrieval and downstream parsing are not language-specific to the input and should need no changes.
