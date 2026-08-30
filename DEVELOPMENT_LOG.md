@@ -1,6 +1,6 @@
 # MASS Project — Development Log
 
-**Multi-Agent Strategy Swarm**
+**Multi-Agent Strategy Swarm — FYP**
 
 ## How to use this document
 
@@ -2348,3 +2348,37 @@ Fix: Bounded Check 2's section match identically to Check 3's existing pattern: 
 Separately, this phase also folds in a constructed test of Check 1 Part B (does the Auditor reliably reject an internal decision mislabeled as an external trigger?) using a synthetic "Ohio Warehouse" fixture with no genuine external trigger present. 6 independent trials run: Check 1 Part B correctly rejected the internally-caused trigger in 5 of 6. No reproducible link was found between the one miss and how the trigger was phrased -- an earlier working hypothesis that symptom-framing evades detection while decision-framing gets caught did not survive a later trial, where a symptom-phrased trigger was caught cleanly.
 
 Lesson: reported at exactly the scale it was tested -- 5/6 (~83%), no established failure pattern -- rather than rounded up to a stronger claim or a fix attempted against a pattern that isn't actually confirmed to exist. Consistent with this project's standing rule (ROADMAP.md, Section 2.5): one observation isn't a pattern, and a hypothesis that doesn't survive a further trial gets discarded, not defended. This finding does not yet meet the n=9-per-fixture bar Check 1's and Check 2's own validated write-ups are held to (see Phase 45) -- a further round at that scale is the natural next step before treating the 5/6 figure as more than directional.
+
+
+---
+
+## Phase 56 — Real Per-Run Case Numbers; Direct PDF Download Replacing the Print Dialog
+
+Problem: `caseNo` and `docCaseNo` were hardcoded to the static placeholder "2026-0027" in the markup -- both already had unused element IDs, suggesting the intent to wire them up was there but never finished. Every run, and the empty landing page before any run at all, showed the identical fake number. Separately, downloading a report relied on `window.print()`, which opens the browser's own print dialog and -- by default, unless the user manually unchecks it under "More settings" every time -- stamps a URL/date/title header-footer strip onto every printed page, neither of which belongs on a document meant to look like a real case file.
+
+Fix:
+- Added `deriveCaseNo()`, turning any hex-ish seed into a stable `YYYY-NNNN` display number, and `randomHexSeed()` for generating one client-side when no real job exists yet. A real case number now shows immediately on page load (restored from the session if one exists, freshly generated if not), gets overwritten with a number derived from the backend's actual `job_id` once a diagnosis starts, and a new one is minted when "Start a New Diagnosis" is clicked. Persisted through `saveState()`/`restoreState()` so a mid-session reload doesn't fall back to the placeholder.
+- Replaced `window.print()` with `html2pdf.js` (same CDN-script pattern already used for `marked`), generating a PDF directly from `#docCard` and triggering a download with no system dialog and no header/footer strip. Targeting `#docCard` specifically also means the header, ledger sidebar, and action buttons are naturally excluded, with no `@media print` rules needed for this path (left untouched as a manual Ctrl+P fallback).
+
+Diagnosis/Validation -- two further bugs were found through actual downloaded PDFs, not review:
+- **Scroll-position capture bug**: `html2canvas` (used internally by `html2pdf.js`) captures based on the page's current scroll position rather than always grabbing the full target element regardless of what's in view. A PDF downloaded after scrolling down to read the report came out as a screenshot of whatever was on screen at that scroll offset -- cut off mid-sentence, with a large blank area after. Fixed by resetting scroll to the top immediately before capture and explicitly setting `scrollX`/`scrollY`/`windowWidth`/`windowHeight` in the `html2canvas` options, restoring the original scroll position afterward.
+- **Verdict stamp invisible in the PDF**: `.verdict-stamp` is `opacity: 0` by default, revealed only through the `stamp-slam` CSS animation triggered by a `.show` class. On the live page that animation finishes almost immediately and the browser correctly holds its final frame indefinitely. But `html2canvas` clones the target element into a fresh rendering context to rasterize it, and CSS animations restart from their 0% keyframe on a freshly cloned element -- the capture happens before the restarted animation reaches its visible state, so the stamp rasterized as fully invisible despite being clearly visible on screen. Fixed by forcing the stamp directly to its settled end-state (`animation: none`, explicit final `opacity`/`transform`) via inline style immediately before capture, bypassing the animation entirely, then restoring the element's original style afterward.
+
+Both fixes verified against real downloaded PDFs across a `SYNTHESIZED` result (multi-page report, stamp correctly visible) and a `FLAGGED_FOR_REVIEW` result (stamp correctly visible in its flagged styling).
+
+Lesson: both of these are well-documented `html2canvas` limitations (scroll-relative capture, and CSS-animation restart on clone), not obscure edge cases -- but neither surfaces in a quick sanity check, only in exactly the conditions a real user hits (having scrolled to actually read the content; a result whose stamp reveal depends on an animation rather than a static style). Real, deliberately-varied test runs kept finding real bugs a single happy-path test would have missed, the same pattern behind every prior UI bug this project has found.
+
+
+---
+
+## Phase 57 — FLAGGED_FOR_REVIEW's Best-Effort Draft Silently Empty in the Real-Time Progress Endpoint
+
+Problem: found while validating Phase 56's PDF fixes against a real `FLAGGED_FOR_REVIEW` result -- the "Best-effort draft -- not independently verified" label rendered with no content beneath it, both on the live page and in the downloaded PDF, ruling out a capture-layer bug and pointing at the data itself.
+
+Diagnosis: `_run_diagnosis_job()` (the background-thread target added in Phase 52 for `/diagnose/start` + `/diagnose/status/{job_id}`, which the demo UI actually calls) unconditionally set `"draft": orchestrator_result.get("unverified_report")` for every status. `unverified_report` only exists when the Orchestrator actually ran and produced a report -- true for `FLAGGED_FIDELITY_FAILURE`, but never true for `FLAGGED_FOR_REVIEW`, since the Orchestrator never runs at all when the Auditor doesn't pass (the hard branch documented in Phase 42 and enforced in `orchestrator.py`). So `draft` was silently `None` for every `FLAGGED_FOR_REVIEW` result specifically, and had been since Phase 52 -- the original single-shot `/diagnose` endpoint, still present in `api.py`, already handled this correctly by sourcing `draft` from `pipeline_result["final_diagnosis"]` for this exact status, but the newer polling endpoint duplicated the response-building logic rather than reusing it, and didn't carry that status-specific branch over. The `"reasons"` field two lines below in the same function already branches correctly per status -- this was an isolated omission on one field, not a structural gap in how the endpoint thinks about status.
+
+Fix: gave `"draft"` the same three-way branch already used for `"reasons"`: `unverified_report` for `FLAGGED_FIDELITY_FAILURE`, `pipeline_result["final_diagnosis"]` for `FLAGGED_FOR_REVIEW`, `None` otherwise.
+
+Validation: re-ran a `FLAGGED_FOR_REVIEW` case after restarting the API server; the full raw Analyst diagnosis now renders under the best-effort label, on the live page and in the downloaded PDF.
+
+Lesson: this bug had been sitting in the endpoint the live demo UI actually uses since Phase 52 and had gone unnoticed since -- not because it was subtle, but because nothing had previously tried to view a `FLAGGED_FOR_REVIEW` result's draft content specifically until Phase 56's PDF testing happened to land on one. Two endpoints implementing the same response shape independently, rather than one endpoint's logic being reused by the other, is exactly the kind of duplication that lets one copy silently drift out of sync with a correctly-handled case in the other -- the same category of risk Phase 48 closed for the RAG corpus's ground-truth filter, here one layer up, at the API response layer instead of the data-indexing layer.

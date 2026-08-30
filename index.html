@@ -10,6 +10,7 @@
     href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <style>
     :root {
       --ink: #0B0F14;
@@ -759,7 +760,7 @@
       <div>
         <div class="brand-eyebrow"><span class="dot"></span>Multi-Agent Analysis &amp; Synthesis</div>
         <h1 class="brand-title">Describe a problem. Get an audited diagnosis.</h1>
-        <p class="brand-sub">Every finding is checked before you see it - if something couldn't be verified,
+        <p class="brand-sub">Every finding is checked before you see it — if something couldn't be verified,
           you'll see exactly why, not a polished answer standing in for one.</p>
       </div>
       <div class="case-no">
@@ -823,7 +824,7 @@
             <div class="field-block">
               <label class="field-label" for="raw-input">What's going on?</label>
               <textarea id="raw-input" rows="8"
-                placeholder="Describe the situation in your own words - what happened, what led up to it, and any numbers or data you have. Don't worry about organizing it."></textarea>
+                placeholder="Describe the situation in your own words — what happened, what led up to it, and any numbers or data you have. Don't worry about organizing it."></textarea>
               <div class="field-hint">Write it the way you'd explain it to a colleague. The next step will organize
                 it for you to check.</div>
             </div>
@@ -893,7 +894,7 @@
 
     <footer class="disclaimer">
       Prototype for demonstration and testing. The intake step that organizes your description into a structured
-      problem is designed to never invent facts you didn't provide - you're checking its work in Step 2 before
+      problem is designed to never invent facts you didn't provide — you're checking its work in Step 2 before
       anything runs on it. Ledger entries marked "not run" reflect the real system: the Orchestrator makes zero
       model calls if the Auditor never passes, so nothing downstream executes on an unverified diagnosis.
     </footer>
@@ -1216,7 +1217,78 @@
 
     els.btnDiagnose.addEventListener('click', runDiagnosis);
     els.btnRetry.addEventListener('click', runDiagnosis);
-    els.btnDownload.addEventListener('click', () => window.print());
+    els.btnDownload.addEventListener('click', downloadReportPdf);
+
+    // Generates and downloads a PDF directly from #docCard — no system
+    // print dialog, no "Headers and footers" URL/date strip Chrome adds
+    // by default. Targeting docCard specifically (rather than window.print()
+    // on the whole page) also means the header, sidebar ledger, and action
+    // buttons are simply never included, with no @media print rules needed.
+    async function downloadReportPdf() {
+      const original = els.btnDownload.textContent;
+      els.btnDownload.textContent = 'Preparing PDF…';
+      els.btnDownload.disabled = true;
+
+      // html2canvas has a well-known bug: it captures based on the page's
+      // CURRENT scroll position rather than always grabbing the full target
+      // element regardless of what's currently in view. If the user scrolled
+      // down to read the report before clicking download, the PDF comes out
+      // as a clipped screenshot of whatever was on screen at that scroll
+      // offset — cut off mid-content — instead of the whole document. Reset
+      // scroll to the top before capturing, and restore it afterward.
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+      window.scrollTo(0, 0);
+
+      // The verdict stamp is entirely animation-driven: opacity: 0 by
+      // default, revealed only via the "stamp-slam" CSS animation triggered
+      // by the .show class. On the live page that animation finished long
+      // ago and the browser correctly holds its final frame. But html2canvas
+      // clones the DOM into a fresh rendering context to rasterize it, and
+      // CSS animations restart from their 0% keyframe on a freshly cloned
+      // element — capture happens before the restarted animation reaches
+      // its visible state, so the stamp comes out invisible in the PDF.
+      // Force it directly to its settled end-state via inline style right
+      // before capture, bypassing the animation entirely, then restore.
+      const stampEl = els.verdictStamp;
+      const prevStampStyle = stampEl.getAttribute('style');
+      stampEl.style.animation = 'none';
+      stampEl.style.opacity = '1';
+      stampEl.style.transform = 'rotate(-8deg) scale(1)';
+
+      try {
+        await html2pdf()
+          .set({
+            margin: 0.5,
+            filename: `MASS-Case-${currentCaseNo || 'report'}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: '#ffffff',
+              scrollX: 0,
+              scrollY: 0,
+              windowWidth: document.documentElement.scrollWidth,
+              windowHeight: document.documentElement.scrollHeight,
+            },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'avoid-all'] },
+          })
+          .from(els.docCard)
+          .save();
+      } catch (err) {
+        showError(`Couldn't generate the PDF: ${err.message}. You can still use your browser's own print-to-PDF as a fallback.`);
+      } finally {
+        if (prevStampStyle === null) {
+          stampEl.removeAttribute('style');
+        } else {
+          stampEl.setAttribute('style', prevStampStyle);
+        }
+        window.scrollTo(scrollX, scrollY);
+        els.btnDownload.textContent = original;
+        els.btnDownload.disabled = false;
+      }
+    }
 
     // Stamps the ledger with the REAL result, not the simulated timer
     // position. Mirrors orchestrator.py's actual hard branch: Orchestrator

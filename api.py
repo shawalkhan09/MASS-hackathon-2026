@@ -472,7 +472,24 @@ def _run_diagnosis_job(job_id: str, structured_input: str, max_revisions: int):
                 "result": {
                     "status": orchestrator_result["status"],
                     "report": orchestrator_result.get("final_report"),
-                    "draft": orchestrator_result.get("unverified_report"),
+                    # "draft" needs the same per-status branching "reasons"
+                    # below already has. unverified_report only exists when
+                    # the Orchestrator actually ran (FLAGGED_FIDELITY_FAILURE);
+                    # for FLAGGED_FOR_REVIEW the Orchestrator never runs at
+                    # all, so unverified_report is always None there -- the
+                    # real best-effort text for that status is the raw
+                    # Analyst diagnosis, pipeline_result["final_diagnosis"],
+                    # the same field the original /diagnose endpoint already
+                    # used correctly for this status.
+                    "draft": (
+                        orchestrator_result.get("unverified_report")
+                        if orchestrator_result["status"] == "FLAGGED_FIDELITY_FAILURE"
+                        else (
+                            pipeline_result["final_diagnosis"]
+                            if orchestrator_result["status"] == "FLAGGED_FOR_REVIEW"
+                            else None
+                        )
+                    ),
                     "reasons": (
                         simplify_fidelity_feedback(
                             orchestrator_result["fidelity_verdict"]
