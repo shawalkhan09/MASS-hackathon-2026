@@ -1,0 +1,16 @@
+# Intake weak-input test -- FIXTURE_LONG_RAMBLING_MULTITOPIC -- trial 5/5
+Run at: 2026-08-31T15:24:21
+GROUND TRUTH: only figure is 27% more shipping-delay tickets since April; hiring freeze/website/parking are tangents with no numbers and no drawn connection
+
+## RAW INPUT
+So it's been a weird year honestly. We had a hiring freeze back in February which nobody was happy about, and then in March we redid the whole website which took way longer than expected and cost more than the agency quoted us originally. Then in April we switched over to a new warehouse management system, and I guess since then support has been getting a lot more tickets about shipping delays, like 27% more than before, which is a lot. Also separately people keep complaining there's not enough parking at the warehouse but that's probably unrelated. Anyway the shipping thing is what's actually worrying me.
+
+## INTAKE OUTPUT
+## Problem Statement
+Support is receiving an increased volume of tickets regarding shipping delays.
+
+## Background
+The organization experienced a hiring freeze in February. The website was redesigned in March, which exceeded the original timeframe and cost estimate. In April, the organization transitioned to a new warehouse management system. Separately, there are ongoing complaints regarding insufficient parking at the warehouse.
+
+## Supporting Data
+The volume of support tickets regarding shipping delays has increased by 27%.

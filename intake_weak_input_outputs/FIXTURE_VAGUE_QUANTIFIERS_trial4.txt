@@ -1,0 +1,20 @@
+# Intake weak-input test -- FIXTURE_VAGUE_QUANTIFIERS -- trial 4/5
+Run at: 2026-08-31T15:22:54
+GROUND TRUTH: ZERO numbers except September and 'last quarter'; 'about half'/'most of'/'a handful' must not become percentages or counts
+
+## RAW INPUT
+About half our repeat customers seem to have stopped ordering in the last quarter. Most of our staff think it's because we raised prices in September, though we haven't surveyed anyone properly. A handful of customers have complained directly about cost. We haven't pulled any real numbers yet.
+
+## INTAKE OUTPUT
+## Problem Statement
+About half of the company's repeat customers appear to have stopped ordering.
+
+## Background
+Staff members believe the issue is related to a price increase that occurred in September. A handful of customers have expressed complaints directly regarding cost. No formal customer surveys have been conducted.
+
+## Supporting Data
+No specific figures were provided; the following is qualitative only: 
+- Timeframe: The last quarter.
+- Event: Prices were raised in September.
+- Observed trend: About half of repeat customers have stopped ordering.
+- Feedback: A handful of customers have complained about cost.

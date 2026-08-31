@@ -1,0 +1,16 @@
+# Intake weak-input test -- FIXTURE_MINIMAL_ONE_LINER -- trial 1/5
+Run at: 2026-08-31T15:24:33
+GROUND TRUTH: zero concrete data of any kind, not even a timeframe -- Supporting Data should say so explicitly, nothing invented
+
+## RAW INPUT
+Sales are down and I don't know why.
+
+## INTAKE OUTPUT
+## Problem Statement
+Sales are down.
+
+## Background
+The user does not know why sales are down.
+
+## Supporting Data
+No concrete numbers, dates, or specific financial figures were provided; the statement provided is qualitative only.
