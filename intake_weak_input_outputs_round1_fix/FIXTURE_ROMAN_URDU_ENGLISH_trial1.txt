@@ -1,0 +1,19 @@
+# Intake weak-input test -- FIXTURE_ROMAN_URDU_ENGLISH -- trial 1/5
+Run at: 2026-08-31T14:36:41
+GROUND TRUTH: Roman Urdu/English code-switch; figures: 5% -> 18%, July, ~200000/month (hedged); supplier-causation hedged ('shayad', 'confirm nahi hai')
+
+## RAW INPUT
+Humari dukaan mein last 2 mahine se bohat problem hai. Grahak complaints bahut zyada ho gaye hain quality issue pe. We changed our supplier in July, shayad that's the wajah lekin confirm nahi hai. Return rate pehle 5% tha ab 18% ho gaya hai. Revenue down almost 200000 per month but exact hisaab nahi kiya abhi tak.
+
+## INTAKE OUTPUT
+## Problem Statement
+The store is experiencing a high volume of customer complaints regarding quality issues.
+
+## Background
+The business has been experiencing problems for the last two months. A supplier change occurred in July, which may be the cause, though this is not confirmed.
+
+## Supporting Data
+*   Timeframe of problems: Last 2 months
+*   Supplier change date: July
+*   Return rate: Increased from 5% to 18%
+*   Revenue impact: Down almost 200,000 per month (exact figures not yet calculated)
