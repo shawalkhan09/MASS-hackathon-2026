@@ -246,59 +246,73 @@ TRIGGER_FRAMINGS = [
     ),
 ]
 
-results = []
+def _run_all_trials():
+    results = []
 
-for i, (label, trigger_line) in enumerate(TRIGGER_FRAMINGS, start=1):
-    diagnosis_text = DIAGNOSIS_TEMPLATE.format(TRIGGER_LINE=trigger_line)
+    for i, (label, trigger_line) in enumerate(TRIGGER_FRAMINGS, start=1):
+        diagnosis_text = DIAGNOSIS_TEMPLATE.format(TRIGGER_LINE=trigger_line)
 
-    print(f"\n{'=' * 70}\nTrial {i}/9: {label}\nTrigger line: {trigger_line}\n{'=' * 70}\n")
+        print(f"\n{'=' * 70}\nTrial {i}/9: {label}\nTrigger line: {trigger_line}\n{'=' * 70}\n")
 
-    try:
-        audit = run_auditor(CASE_TEXT, diagnosis_text)
-    except Exception as e:
-        print(f"\n!! FAILED on trial {i} ({label}): {e}\n")
-        out_path = OUT_DIR / f"trial{i}_{RUN_TIMESTAMP}.FAILED.txt"
+        try:
+            audit = run_auditor(CASE_TEXT, diagnosis_text)
+        except Exception as e:
+            print(f"\n!! FAILED on trial {i} ({label}): {e}\n")
+            out_path = OUT_DIR / f"trial{i}_{RUN_TIMESTAMP}.FAILED.txt"
+            out_path.write_text(
+                f"Trial {i} ({label}) failed at "
+                f"{datetime.now().isoformat(timespec='seconds')}\n\n"
+                f"Trigger line: {trigger_line}\n\nError:\n{e}\n"
+            )
+            results.append((i, label, trigger_line, None, None, "FAILED"))
+            continue
+
+        overall_pass = parse_verdict(audit)
+        part_b_match = PART_B_PATTERN.search(audit)
+        part_b_result = part_b_match.group(1).upper() if part_b_match else "UNPARSEABLE"
+
+        out_path = OUT_DIR / f"trial{i}_{RUN_TIMESTAMP}.md"
         out_path.write_text(
-            f"Trial {i} ({label}) failed at "
-            f"{datetime.now().isoformat(timespec='seconds')}\n\n"
-            f"Trigger line: {trigger_line}\n\nError:\n{e}\n"
+            f"# Check 1 Part B -- Ohio Warehouse -- Round 3 -- Trial {i}/9\n\n"
+            f"**Framing:** {label}\n\n"
+            f"**Trigger line used:** {trigger_line}\n\n"
+            f"**Overall verdict:** {'PASS' if overall_pass else 'FAIL'}\n\n"
+            f"**Part B result:** {part_b_result}\n\n"
+            f"---\n\n## Full diagnosis fed to the Auditor\n\n{diagnosis_text}\n\n"
+            f"---\n\n## Full raw Auditor output\n\n{audit}\n"
         )
-        results.append((i, label, trigger_line, None, None, "FAILED"))
-        continue
 
-    overall_pass = parse_verdict(audit)
-    part_b_match = PART_B_PATTERN.search(audit)
-    part_b_result = part_b_match.group(1).upper() if part_b_match else "UNPARSEABLE"
+        caught = (part_b_result == "FAIL")  # correctly rejecting the mislabeled trigger
+        results.append((i, label, trigger_line, overall_pass, part_b_result, "CAUGHT" if caught else "MISSED"))
+        print(f"\nPart B: {part_b_result} ({'CAUGHT' if caught else 'MISSED -- investigate'})\n")
 
-    out_path = OUT_DIR / f"trial{i}_{RUN_TIMESTAMP}.md"
-    out_path.write_text(
-        f"# Check 1 Part B -- Ohio Warehouse -- Round 3 -- Trial {i}/9\n\n"
-        f"**Framing:** {label}\n\n"
-        f"**Trigger line used:** {trigger_line}\n\n"
-        f"**Overall verdict:** {'PASS' if overall_pass else 'FAIL'}\n\n"
-        f"**Part B result:** {part_b_result}\n\n"
-        f"---\n\n## Full diagnosis fed to the Auditor\n\n{diagnosis_text}\n\n"
-        f"---\n\n## Full raw Auditor output\n\n{audit}\n"
-    )
+    return results
 
-    caught = (part_b_result == "FAIL")  # correctly rejecting the mislabeled trigger
-    results.append((i, label, trigger_line, overall_pass, part_b_result, "CAUGHT" if caught else "MISSED"))
-    print(f"\nPart B: {part_b_result} ({'CAUGHT' if caught else 'MISSED -- investigate'})\n")
 
-print(f"\n{'=' * 70}\nSUMMARY -- Round 3, n=9 (Ohio Warehouse, Check 1 Part B)\n{'=' * 70}")
-for i, label, trigger_line, overall_pass, part_b_result, status in results:
-    print(f"  [{status}] Trial {i}: {label} -- Part B: {part_b_result}")
+def _print_summary(results):
+    print(f"\n{'=' * 70}\nSUMMARY -- Round 3, n=9 (Ohio Warehouse, Check 1 Part B)\n{'=' * 70}")
+    for i, label, trigger_line, overall_pass, part_b_result, status in results:
+        print(f"  [{status}] Trial {i}: {label} -- Part B: {part_b_result}")
 
-n_run = len([r for r in results if r[5] != "FAILED"])
-n_caught = len([r for r in results if r[5] == "CAUGHT"])
-n_unparseable = len([r for r in results if r[4] == "UNPARSEABLE"])
+    n_run = len([r for r in results if r[5] != "FAILED"])
+    n_caught = len([r for r in results if r[5] == "CAUGHT"])
+    n_unparseable = len([r for r in results if r[4] == "UNPARSEABLE"])
 
-print(f"\nThis round: {n_caught}/{n_run} correctly rejected (Part B FAIL).")
-if n_unparseable:
-    print(f"WARNING: {n_unparseable} trial(s) had an unparseable Part B line -- "
-          f"read the saved .md file for that trial directly before trusting this count.")
-print(f"\nRaw per-trial evidence saved to: {OUT_DIR}/")
-print("Report this round's figure at its own n=9 scale. If citing a pooled")
-print("figure alongside Phase 36 (3/3) and Phase 55 (5/6), label it explicitly")
-print("as n=18 pooled across three rounds of differing methodology -- do not")
-print("collapse it into one unqualified ratio.")
+    print(f"\nThis round: {n_caught}/{n_run} correctly rejected (Part B FAIL).")
+    if n_unparseable:
+        print(f"WARNING: {n_unparseable} trial(s) had an unparseable Part B line -- "
+              f"read the saved .md file for that trial directly before trusting this count.")
+    print(f"\nRaw per-trial evidence saved to: {OUT_DIR}/")
+    print("Report this round's figure at its own n=9 scale. If citing a pooled")
+    print("figure alongside Phase 36 (3/3) and Phase 55 (5/6), label it explicitly")
+    print("as n=18 pooled across three rounds of differing methodology -- do not")
+    print("collapse it into one unqualified ratio.")
+
+
+def main():
+    results = _run_all_trials()
+    _print_summary(results)
+
+
+if __name__ == "__main__":
+    main()
