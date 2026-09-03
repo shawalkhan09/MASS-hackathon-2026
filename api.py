@@ -360,7 +360,10 @@ def simplify_fidelity_feedback(fidelity_verdict_text: str) -> List[str]:
             if key in seen:
                 continue
             seen.add(key)
-            fail_snippets.append(" ".join(chunk.split())[:400])
+            snippet = " ".join(chunk.split())
+            if len(snippet) > 400:
+                snippet = snippet[:400].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
+            fail_snippets.append(snippet)
 
         if fail_snippets:
             for snippet in fail_snippets[:3]:
