@@ -9,7 +9,7 @@ diagnosed, how it was fixed, and what it taught. It is deliberately unpolished:
 its job is completeness, not readability. It exists for three reasons:
 
 1. **Your own reference** while building the next pieces (revision loop, RAGAS harness).
-2. **Evidence of process** — if a supervisor or examiner asks "walk me through a
+2. **Evidence of process** — if a judge or teammate asks "walk me through a
    challenge you faced," this document already has the answer, dated and specific.
 3. **Raw material** for the polished "Engineering Challenges" section that belongs
    in the actual project report — that section should be written *from* this log, not
