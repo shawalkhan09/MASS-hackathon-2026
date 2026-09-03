@@ -1,6 +1,6 @@
 # MASS Project — Development Log
 
-**Multi-Agent Strategy Swarm — FYP**
+**Multi-Agent Strategy Swarm**
 
 ## How to use this document
 
@@ -12,7 +12,7 @@ its job is completeness, not readability. It exists for three reasons:
 2. **Evidence of process** — if a supervisor or examiner asks "walk me through a
    challenge you faced," this document already has the answer, dated and specific.
 3. **Raw material** for the polished "Engineering Challenges" section that belongs
-   in the actual FYP report — that section should be written *from* this log, not
+   in the actual project report — that section should be written *from* this log, not
    from memory, once this log is complete.
 
 **Entry format:** each numbered phase covers one coherent piece of work. Within a
@@ -41,7 +41,7 @@ No major issues in this phase — straightforward content generation.
 **Problem:** Original project plan (MaRGen-style) assumed a corpus of a family
 contact's real consulting playbooks as the domain-specific "hidden knowledge"
 layer. That source turned out not to exist — the project was reframed as
-purely academic/FYP-scoped.
+purely academic-scoped.
 
 **Diagnosis:** Without proprietary data, the system needed (a) a case-scenario
 corpus for the agents to diagnose, and (b) a different evaluation baseline,
@@ -54,7 +54,7 @@ since "compare against a real consultant" was no longer possible.
   issues while keeping a genuine, externally-verifiable ground truth.
 - Evaluation baseline changed from "vs. human consultant" to an **ablation
   study**: multi-agent + RAG + critique loop vs. a single zero-shot LLM call.
-  This is arguably a *stronger* FYP result — it needs no external human
+  This is arguably a *stronger* result — it needs no external human
   panel and directly tests whether the architecture itself adds value.
 
 **Lesson:** Losing the "differentiator" data source didn't weaken the
